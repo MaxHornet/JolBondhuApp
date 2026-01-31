@@ -1,0 +1,24 @@
+
+> jolbondhu-backend@1.0.0 start
+> json-server --watch db.json --port 3001 --middlewares cors.js --delay 200
+
+
+  \{^_^}/ hi!
+
+  Loading db.json
+  Loading cors.js
+  Done
+
+  Resources
+  http://localhost:3001/basins
+  http://localhost:3001/reports
+  http://localhost:3001/alerts
+  http://localhost:3001/broadcasts
+  http://localhost:3001/users
+
+  Home
+  http://localhost:3001
+
+  Type s + enter at any time to create a snapshot of the database
+  Watching...
+
