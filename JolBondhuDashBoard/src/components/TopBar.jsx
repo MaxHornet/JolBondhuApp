@@ -8,6 +8,7 @@
 import React from 'react';
 import { Menu, Moon, Sun, Globe, Bell } from 'lucide-react';
 import { motion } from 'framer-motion';
+import WeatherWidget from './WeatherWidget';
 
 const TopBar = ({ darkMode, setDarkMode, language, setLanguage, onMenuClick, t, currentTime }) => {
   return (
@@ -29,6 +30,8 @@ const TopBar = ({ darkMode, setDarkMode, language, setLanguage, onMenuClick, t, 
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Weather Widget */}
+          <WeatherWidget darkMode={darkMode} language={language} t={t} />
           {/* Language Toggle - Dual Button Design */}
           <div className={`flex items-center rounded-lg border ${darkMode ? 'border-slate-600 bg-slate-800' : 'border-gray-200 bg-white'} overflow-hidden`}>
             <button

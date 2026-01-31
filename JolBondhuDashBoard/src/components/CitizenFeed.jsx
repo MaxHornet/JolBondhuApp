@@ -1,41 +1,81 @@
-// AGENT: Update PROJECT_CONTEXT.md after any changes
-// Location: ./PROJECT_CONTEXT.md  ← RELATIVE PATH (auto-detected)
-// Protocol: See AGENTS_UPDATE_PROTOCOL.md in workspace root
-// RULE: Always maintain context for current and future agents
-// NOTE: If context not found here, search parent directories
-// PROJECT FINGERPRINT: jolbondhu-dashboard-testing2
-
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Clock, Image as ImageIcon } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { MessageSquare, Clock, Image as ImageIcon, AlertTriangle, MapPin, CloudRain } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import DashboardWeatherService from '../services/dashboardWeatherService';
+import { apiService } from '../services/apiService';
 
-const CitizenFeed = ({ reports: initialReports, selectedBasin, darkMode, language, t }) => {
-  // TODO: API INTEGRATION - Fetch zone-specific reports with polling
-  // Endpoint: GET https://api.yourservice.com/reports?basinId={selectedBasin.id}&limit=20
-  // Headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-  // Query params: basinId (required), limit (optional, default 20), since (optional, timestamp)
-  // Response: Array of report objects { id, basinId, user, location, locationAssamese, content, messageAssamese, time, type, image }
-  // 
-  // Example implementation with polling every 45 seconds:
-  // const [reports, setReports] = useState([]);
-  // useEffect(() => {
-  //   const fetchReports = async () => {
-  //     try {
-  //       const response = await fetch(`https://api.yourservice.com/reports?basinId=${selectedBasin.id}&limit=20`, {
-  //         headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-  //       });
-  //       const data = await response.json();
-  //       setReports(data);
-  //     } catch (error) {
-  //       console.error('Error fetching reports:', error);
-  //     }
-  //   };
-  //   
-  //   fetchReports(); // Initial fetch
-  //   const interval = setInterval(fetchReports, 45000); // Poll every 45 seconds
-  //   return () => clearInterval(interval);
-  // }, [selectedBasin.id]);
-  const [reports] = useState(initialReports); // DEMO DATA - remove this line when using API
+/**
+ * CitizenFeed Component (Updated with Real API Integration)
+ * 
+ * Displays citizen reports with IMD official warnings at the top
+ * Shows zone-specific reports from API with 30-second polling
+ */
+
+const CitizenFeed = ({ selectedBasin, darkMode, language, t }) => {
+  const [reports, setReports] = useState([]);
+  const [imWarnings, setIMWarnings] = useState([]);
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch IMD warnings, weather, and reports for the zone
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch real reports from API
+        if (selectedBasin?.id) {
+          const apiReports = await apiService.getReports(selectedBasin.id);
+          // Transform API reports to component format
+          const formattedReports = apiReports.map(report => ({
+            id: report.id,
+            basinId: report.basinId,
+            user: report.userName || 'Anonymous',
+            location: selectedBasin?.location || 'Unknown Location',
+            locationAssamese: selectedBasin?.locationAssamese || 'অজ্ঞাত অৱস্থান',
+            time: new Date(report.timestamp).toLocaleTimeString('en-IN', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: true 
+            }),
+            content: `${report.issueType}: ${report.description}`,
+            messageAssamese: `${report.issueType}: ${report.description}`,
+            type: 'report',
+            image: !!report.photoData,
+            status: report.status
+          }));
+          setReports(formattedReports);
+        }
+        
+        // Fetch IMD warnings
+        const warnings = await DashboardWeatherService.fetchIMDWarnings();
+        
+        // Filter warnings for selected basin's district
+        const relevantWarnings = warnings.filter(w => {
+          const district = selectedBasin?.id === 'brahmaputra-north' ? 'SONITPUR' : 'KAMRUP';
+          return w.district.includes(district) || w.district.includes('GUWAHATI');
+        });
+        
+        setIMWarnings(relevantWarnings);
+        
+        // Fetch zone weather
+        if (selectedBasin?.id) {
+          const zoneWeather = await DashboardWeatherService.fetchZoneWeather(selectedBasin.id);
+          setWeather(zoneWeather);
+        }
+      } catch (error) {
+        console.error('Error fetching feed data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    
+    // Auto-refresh every 30 seconds (reports) and 15 minutes (weather/warnings)
+    const reportInterval = setInterval(fetchData, 30000); // 30 seconds for reports
+    return () => clearInterval(reportInterval);
+  }, [selectedBasin?.id]);
 
   const getTypeColor = (type) => {
     switch(type) {
@@ -58,20 +98,30 @@ const CitizenFeed = ({ reports: initialReports, selectedBasin, darkMode, languag
   // Filter reports by selected basin
   const filteredReports = reports?.filter(report => report?.basinId === selectedBasin?.id) || [];
 
-  // TODO: API INTEGRATION - Real-time report submission
-  // When user submits a new report via API:
-  // POST https://api.yourservice.com/reports
-  // Headers: { 'Authorization': 'Bearer YOUR_API_KEY', 'Content-Type': 'application/json' }
-  // Body: { basinId, user, location, content, type, image (optional) }
-  // After successful POST, the polling will automatically fetch the new report
-
   // Get bilingual zone name for header
   const zoneName = language === 'as' && selectedBasin?.nameAssamese 
     ? selectedBasin.nameAssamese 
     : selectedBasin?.name;
 
+  // Format warning time
+  const formatWarningTime = (date) => {
+    if (!date) return '';
+    return new Date(date).toLocaleTimeString('en-IN', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  // Check if warning is still active
+  const isWarningActive = (expires) => {
+    if (!expires) return false;
+    return new Date(expires) > new Date();
+  };
+
   return (
     <div className={`rounded-2xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} shadow-sm`}>
+      {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex items-center gap-2">
         <MessageSquare className="text-teal-500" size={20} />
         <div>
@@ -79,7 +129,100 @@ const CitizenFeed = ({ reports: initialReports, selectedBasin, darkMode, languag
           <p className="text-xs text-gray-500">{zoneName}</p>
         </div>
       </div>
+
+      {/* IMD Official Warnings Section */}
+      <AnimatePresence>
+        {imWarnings.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className={`border-b ${darkMode ? 'border-slate-700 bg-red-900/10' : 'border-gray-200 bg-red-50'}`}
+          >
+            <div className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <span className={`text-xs font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+                  {language === 'as' ? 'IMD সতৰ্কবাণী (অফিচিয়েল)' : 'IMD Warnings (Official)'}
+                </span>
+              </div>
+              
+              <div className="space-y-2">
+                {imWarnings.filter(w => isWarningActive(w.expires)).slice(0, 2).map((warning) => (
+                  <div 
+                    key={warning.id}
+                    className={`p-2.5 rounded-lg border-l-2 ${
+                      warning.severity === 'high' 
+                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
+                        : 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                          {warning.district}
+                        </div>
+                        <div className={`text-xs mt-0.5 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {language === 'as' && warning.descriptionAssamese 
+                            ? warning.descriptionAssamese 
+                            : warning.description}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                            warning.severity === 'high' 
+                              ? 'bg-red-500 text-white' 
+                              : 'bg-amber-500 text-white'
+                          }`}>
+                            {warning.severity.toUpperCase()}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            Until {formatWarningTime(warning.expires)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {imWarnings.filter(w => isWarningActive(w.expires)).length > 2 && (
+                  <div className="text-center">
+                    <span className={`text-xs ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+                      +{imWarnings.filter(w => isWarningActive(w.expires)).length - 2} more {language === 'as' ? 'আৰু' : 'more'} active
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Current Weather Mini-Card */}
+      {weather && (
+        <div className={`p-3 border-b ${darkMode ? 'border-slate-700 bg-blue-900/10' : 'border-gray-200 bg-blue-50'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CloudRain className="w-4 h-4 text-blue-500" />
+              <span className={`text-xs ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                {language === 'as' ? 'বৰ্তমান বতৰ:' : 'Current Weather:'}
+              </span>
+              <span className={`text-xs font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                {Math.round(weather.temperature)}°C
+              </span>
+              {(weather.rainIntensity || 0) > 0 && (
+                <span className="text-xs text-blue-500">
+                  ({weather.rainIntensity.toFixed(1)} mm/h)
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-gray-500">
+              {Math.round(weather.humidity)}% {language === 'as' ? 'আৰ্দ্ৰতা' : 'humidity'}
+            </div>
+          </div>
+        </div>
+      )}
       
+      {/* Reports List */}
       <div className="divide-y divide-gray-200 dark:divide-slate-700 max-h-80 overflow-y-auto">
         {filteredReports.length > 0 ? (
           filteredReports.map((report, idx) => {

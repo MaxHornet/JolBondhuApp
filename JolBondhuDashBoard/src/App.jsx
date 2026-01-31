@@ -16,55 +16,66 @@ import CitizenFeed from './components/CitizenFeed'
 import ActionCenter from './components/ActionCenter'
 import ZoneMap from './components/ZoneMap'
 import { mockData } from './data/mockData'
+import { apiService } from './services/apiService'
 
 function App() {
   const [darkMode, setDarkMode] = useState(false)
   const [language, setLanguage] = useState('en')
-  const [selectedBasin, setSelectedBasin] = useState(mockData.basins[0])
+  const [selectedBasin, setSelectedBasin] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
+  
+  // Use real API data with fallback to mock data
+  const [basins, setBasins] = useState(mockData.basins);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // TODO: API INTEGRATION - Fetch all basins data
-  // Endpoint: GET https://api.yourservice.com/basins
-  // Headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-  // Response: Array of basin objects with id, name, nameAssamese, location, riskLevel, etc.
-  // 
-  // Example implementation:
-  // const [basins, setBasins] = useState([]);
-  // useEffect(() => {
-  //   const fetchBasins = async () => {
-  //     try {
-  //       const response = await fetch('https://api.yourservice.com/basins', {
-  //         headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-  //       });
-  //       const data = await response.json();
-  //       setBasins(data);
-  //       if (data.length > 0) setSelectedBasin(data[0]);
-  //     } catch (error) {
-  //       console.error('Error fetching basins:', error);
-  //     }
-  //   };
-  //   fetchBasins();
-  // }, []);
-  const [basins, setBasins] = useState(mockData.basins); // DEMO DATA
+  // Fetch basins from API on mount
+  useEffect(() => {
+    const fetchBasins = async () => {
+      try {
+        setIsLoading(true);
+        const data = await apiService.getBasins();
+        if (data && data.length > 0) {
+          setBasins(data);
+          setSelectedBasin(data[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching basins:', error);
+        // Fallback to mock data already set in useState
+        if (!selectedBasin && mockData.basins.length > 0) {
+          setSelectedBasin(mockData.basins[0]);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchBasins();
+  }, []);
 
-  // TODO: API INTEGRATION - Real-time updates polling
-  // Poll every 30 seconds for updated basin data (risk levels, rainfall, etc.)
-  // 
-  // Example implementation:
-  // useEffect(() => {
-  //   const interval = setInterval(async () => {
-  //     try {
-  //       const response = await fetch('https://api.yourservice.com/basins/status');
-  //       const updatedData = await response.json();
-  //       setBasins(updatedData);
-  //     } catch (error) {
-  //       console.error('Error polling basin updates:', error);
-  //     }
-  //   }, 30000); // Poll every 30 seconds
-  //   return () => clearInterval(interval);
-  // }, []);
+  // Real-time updates polling - every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const updatedData = await apiService.getBasins();
+        if (updatedData && updatedData.length > 0) {
+          setBasins(updatedData);
+          // Update selected basin if it exists in new data
+          if (selectedBasin) {
+            const updatedSelected = updatedData.find(b => b.id === selectedBasin.id);
+            if (updatedSelected) {
+              setSelectedBasin(updatedSelected);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error polling basin updates:', error);
+      }
+    }, 30000); // Poll every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [selectedBasin?.id]);
 
   // Get translations from mockData
   const t = mockData.translations[language]
@@ -145,7 +156,7 @@ function App() {
             {/* Zone Map */}
             <div className="lg:col-span-1">
               <ZoneMap 
-                basins={mockData.basins}
+                basins={basins}
                 selectedBasin={selectedBasin}
                 onBasinSelect={setSelectedBasin}
                 darkMode={darkMode}
@@ -157,7 +168,7 @@ function App() {
             {/* Zone List */}
             <div className="lg:col-span-1">
               <ZoneList 
-                basins={mockData.basins}
+                basins={basins}
                 selectedBasin={selectedBasin}
                 onSelect={setSelectedBasin}
                 darkMode={darkMode}
@@ -169,7 +180,6 @@ function App() {
             {/* Citizen Feed - Spans full width on mobile, 2 columns on large */}
             <div className="lg:col-span-2">
               <CitizenFeed 
-                reports={mockData.citizenReports}
                 selectedBasin={selectedBasin}
                 darkMode={darkMode}
                 language={language}

@@ -1,18 +1,15 @@
-// AGENT: Update PROJECT_CONTEXT.md after any changes
-// Location: ./PROJECT_CONTEXT.md  ← RELATIVE PATH (auto-detected)
-// Protocol: See AGENTS_UPDATE_PROTOCOL.md in workspace root
-// RULE: Always maintain context for current and future agents
-// NOTE: If context not found here, search parent directories
-// PROJECT FINGERPRINT: jolbondhu-dashboard-testing2
-
-import React, { useState } from 'react';
-import { Phone, Shield, Radio, Send, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Phone, Shield, Radio, Send, X, CheckCircle, AlertTriangle, Clock, Users, MessageSquare, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import BroadcastAlertService from '../services/broadcastAlertService';
 
 const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
   const [activeModal, setActiveModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [modalData, setModalData] = useState({});
+  const [alertResult, setAlertResult] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
 
   const actions = [
     { 
@@ -45,15 +42,29 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
     },
   ];
 
-  // TODO: API INTEGRATION - Handle Emergency Contacts
-  // Endpoint: GET https://api.yourservice.com/emergency-contacts?basinId={selectedBasin.id}
-  // Headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-  // Response: Array of { name, phone, type, priority }
+  // Load alert templates when broadcast modal opens
+  useEffect(() => {
+    if (activeModal === 'broadcast') {
+      loadAlertTemplates();
+    }
+  }, [activeModal]);
+
+  // Load alert templates
+  const loadAlertTemplates = async () => {
+    try {
+      const templatesData = await BroadcastAlertService.getAlertTemplates();
+      setTemplates(templatesData[language] || templatesData.en);
+    } catch (error) {
+      console.error('Error loading templates:', error);
+    }
+  };
+
+  // Handle Emergency Contacts
   const handleEmergencyContacts = async () => {
     setActiveModal('emergency');
     setLoading(true);
     
-    // DEMO: Simulated API call
+    // Simulate API call with realistic delay
     setTimeout(() => {
       setModalData({
         contacts: [
@@ -61,34 +72,18 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
           { name: 'Guwahati Municipal Corporation', phone: '0361-2545002', type: 'Municipal', priority: 'High' },
           { name: 'District Collector Office', phone: '1077', type: 'District', priority: 'Medium' },
           { name: 'Fire Department', phone: '101', type: 'Emergency', priority: 'High' },
+          { name: 'ASEB Electricity Emergency', phone: '1912', type: 'Electricity', priority: 'High' },
         ]
       });
       setLoading(false);
-    }, 1000);
-    
-    // TODO: Replace with real API call:
-    // try {
-    //   const response = await fetch(`https://api.yourservice.com/emergency-contacts?basinId=${selectedBasin.id}`, {
-    //     headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-    //   });
-    //   const data = await response.json();
-    //   setModalData({ contacts: data });
-    // } catch (error) {
-    //   console.error('Error fetching emergency contacts:', error);
-    // } finally {
-    //   setLoading(false);
-    // }
+    }, 800);
   };
 
-  // TODO: API INTEGRATION - Handle Safety Guidelines
-  // Endpoint: GET https://api.yourservice.com/safety-guidelines?riskLevel={selectedBasin.riskLevel}
-  // Headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-  // Response: { title, guidelines: Array of { step, description } }
+  // Handle Safety Guidelines
   const handleSafetyGuidelines = async () => {
     setActiveModal('safety');
     setLoading(true);
     
-    // DEMO: Simulated API call
     setTimeout(() => {
       const guidelines = selectedBasin?.riskLevel === 'High' 
         ? [
@@ -116,107 +111,123 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
         guidelines 
       });
       setLoading(false);
-    }, 1000);
-    
-    // TODO: Replace with real API call:
-    // try {
-    //   const response = await fetch(`https://api.yourservice.com/safety-guidelines?riskLevel=${selectedBasin.riskLevel}`, {
-    //     headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-    //   });
-    //   const data = await response.json();
-    //   setModalData(data);
-    // } catch (error) {
-    //   console.error('Error fetching safety guidelines:', error);
-    // } finally {
-    //   setLoading(false);
-    // }
+    }, 600);
   };
 
-  // TODO: API INTEGRATION - Handle Broadcast Alert
-  // Endpoint: POST https://api.yourservice.com/alerts/broadcast
-  // Headers: { 'Authorization': 'Bearer YOUR_API_KEY', 'Content-Type': 'application/json' }
-  // Body: { basinId, message, severity, channels: ['sms', 'push', 'email'] }
-  // Response: { success: true, recipientsNotified: 1500 }
-  const handleBroadcastAlert = async (message, severity = 'high') => {
+  // Handle Broadcast Alert - NOW USING REAL API SERVICE
+  const handleBroadcastAlert = async (message, severity = 'high', channels = ['sms', 'push', 'email']) => {
+    if (!message || !selectedBasin) {
+      alert(language === 'as' ? 'অনুগ্ৰহ কৰি বাৰ্তা প্ৰবেশ কৰক' : 'Please enter a message');
+      return;
+    }
+
     setLoading(true);
+    setAlertResult(null);
     
-    // DEMO: Simulated API call
-    setTimeout(() => {
-      alert(`Broadcast Alert Sent!\n\nZone: ${selectedBasin?.name}\nMessage: ${message}\nSeverity: ${severity}\n\nRecipients: ~1,500 citizens`);
+    try {
+      const alertData = {
+        basinId: selectedBasin.id,
+        message: message,
+        severity: severity,
+        channels: channels,
+        type: 'flood_warning',
+        timestamp: new Date().toISOString()
+      };
+
+      // Call the real API service
+      const result = await BroadcastAlertService.broadcastAlert(alertData);
+      
+      setAlertResult({
+        type: 'success',
+        title: language === 'as' ? "সতৰ্কবাণী সফলতাৰে পঠিওৱা হ'ল!" : 'Alert Broadcasted Successfully!',
+        data: result
+      });
+      
+      // Auto-close after 3 seconds
+      setTimeout(() => {
+        if (alertResult?.type === 'success') {
+          setActiveModal(null);
+          setAlertResult(null);
+          setModalData({});
+        }
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Error broadcasting alert:', error);
+      setAlertResult({
+        type: 'error',
+        title: language === 'as' ? 'ত্ৰুটি' : 'Error',
+        message: error.message || (language === 'as' ? 'সতৰ্কবাণী পঠিওৱাত বিফল' : 'Failed to broadcast alert')
+      });
+    } finally {
       setLoading(false);
-      setActiveModal(null);
-    }, 1500);
-    
-    // TODO: Replace with real API call:
-    // try {
-    //   const response = await fetch('https://api.yourservice.com/alerts/broadcast', {
-    //     method: 'POST',
-    //     headers: { 
-    //       'Authorization': 'Bearer YOUR_API_KEY',
-    //       'Content-Type': 'application/json'
-    //     },
-    //     body: JSON.stringify({
-    //       basinId: selectedBasin.id,
-    //       message: message,
-    //       severity: severity,
-    //       channels: ['sms', 'push', 'email'],
-    //       timestamp: new Date().toISOString()
-    //     })
-    //   });
-    //   const data = await response.json();
-    //   alert(`Alert broadcasted successfully! ${data.recipientsNotified} recipients notified.`);
-    // } catch (error) {
-    //   console.error('Error broadcasting alert:', error);
-    //   alert('Failed to broadcast alert. Please try again.');
-    // } finally {
-    //   setLoading(false);
-    //   setActiveModal(null);
-    // }
+    }
   };
 
-  // TODO: API INTEGRATION - Handle Send Warning
-  // Endpoint: POST https://api.yourservice.com/alerts/warning
-  // Headers: { 'Authorization': 'Bearer YOUR_API_KEY', 'Content-Type': 'application/json' }
-  // Body: { basinId, recipients: ['citizens', 'authorities'], message, priority }
-  // Response: { success: true, smsSent: 1200, pushSent: 800, emailSent: 450 }
+  // Handle Send Warning - NOW USING REAL API SERVICE
   const handleSendWarning = async (message, recipients = ['citizens']) => {
+    if (!message || !selectedBasin) {
+      alert(language === 'as' ? 'অনুগ্ৰহ কৰি বাৰ্তা প্ৰবেশ কৰক' : 'Please enter a message');
+      return;
+    }
+
     setLoading(true);
+    setAlertResult(null);
     
-    // DEMO: Simulated API call
-    setTimeout(() => {
-      alert(`Warning Sent!\n\nZone: ${selectedBasin?.name}\nMessage: ${message}\nRecipients: ${recipients.join(', ')}\n\nSMS: 1,200 sent\nPush: 800 sent\nEmail: 450 sent`);
+    try {
+      const warningData = {
+        basinId: selectedBasin.id,
+        message: message,
+        recipients: recipients,
+        priority: 'high',
+        timestamp: new Date().toISOString()
+      };
+
+      // Call the real API service
+      const result = await BroadcastAlertService.sendWarning(warningData);
+      
+      setAlertResult({
+        type: 'success',
+        title: language === 'as' ? 'সতৰ্কবাণী সফলতাৰে পঠিওৱা হ\'ল!' : 'Warning Sent Successfully!',
+        data: result
+      });
+      
+      // Auto-close after 3 seconds
+      setTimeout(() => {
+        if (alertResult?.type === 'success') {
+          setActiveModal(null);
+          setAlertResult(null);
+          setModalData({});
+        }
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Error sending warning:', error);
+      setAlertResult({
+        type: 'error',
+        title: language === 'as' ? 'ত্ৰুটি' : 'Error',
+        message: error.message || (language === 'as' ? 'সতৰ্কবাণী পঠিওৱাত বিফল' : 'Failed to send warning')
+      });
+    } finally {
       setLoading(false);
-      setActiveModal(null);
-    }, 1500);
-    
-    // TODO: Replace with real API call:
-    // try {
-    //   const response = await fetch('https://api.yourservice.com/alerts/warning', {
-    //     method: 'POST',
-    //     headers: { 
-    //       'Authorization': 'Bearer YOUR_API_KEY',
-    //       'Content-Type': 'application/json'
-    //     },
-    //     body: JSON.stringify({
-    //       basinId: selectedBasin.id,
-    //       message: message,
-    //       recipients: recipients,
-    //       priority: 'high',
-    //       timestamp: new Date().toISOString()
-    //     })
-    //   });
-    //   const data = await response.json();
-    //   alert(`Warning sent! SMS: ${data.smsSent}, Push: ${data.pushSent}, Email: ${data.emailSent}`);
-    // } catch (error) {
-    //   console.error('Error sending warning:', error);
-    //   alert('Failed to send warning. Please try again.');
-    // } finally {
-    //   setLoading(false);
-    //   setActiveModal(null);
-    // }
+    }
+  };
+
+  // Handle template selection
+  const handleTemplateSelect = (template) => {
+    setSelectedTemplate(template);
+    setModalData({ 
+      ...modalData, 
+      message: template.message,
+      severity: template.severity 
+    });
   };
 
   const handleAction = (actionType) => {
+    setAlertResult(null);
+    setModalData({});
+    setSelectedTemplate(null);
+    
     switch(actionType) {
       case 'emergency':
         handleEmergencyContacts();
@@ -233,6 +244,15 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
       default:
         console.log('Unknown action:', actionType);
     }
+  };
+
+  // Get recipient checkbox state
+  const getRecipients = () => {
+    const recipients = [];
+    if (modalData.sendToCitizens) recipients.push('citizens');
+    if (modalData.sendToAuthorities) recipients.push('authorities');
+    if (modalData.sendToEmergency) recipients.push('emergency_services');
+    return recipients.length > 0 ? recipients : ['citizens'];
   };
 
   return (
@@ -270,13 +290,13 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4"
-            onClick={() => setActiveModal(null)}
+            onClick={() => !loading && setActiveModal(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className={`rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border shadow-xl`}
+              className={`rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border shadow-2xl`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -288,8 +308,9 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
                   {activeModal === 'warning' && t.sendWarning}
                 </h3>
                 <button 
-                  onClick={() => setActiveModal(null)}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+                  onClick={() => !loading && setActiveModal(null)}
+                  disabled={loading}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-50"
                 >
                   <X size={20} />
                 </button>
@@ -297,16 +318,97 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
 
               {/* Loading State */}
               {loading && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
-                  <span className="ml-3 text-gray-500">Loading...</span>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mb-4"></div>
+                  <span className="text-gray-500">
+                    {language === 'as' ? 'পঠিওৱা হৈছে...' : 'Sending...'}
+                  </span>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {language === 'as' ? 'অনুগ্ৰহ কৰি অপেক্ষা কৰক' : 'Please wait'}
+                  </p>
+                </div>
+              )}
+
+              {/* Success/Error Result */}
+              {!loading && alertResult && (
+                <div className={`rounded-xl p-6 mb-4 ${alertResult.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border border-green-200' : 'bg-red-50 dark:bg-red-900/20 border border-red-200'}`}>
+                  <div className="flex items-start gap-3">
+                    {alertResult.type === 'success' ? (
+                      <CheckCircle className="w-8 h-8 text-green-500 flex-shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-8 h-8 text-red-500 flex-shrink-0" />
+                    )}
+                    <div>
+                      <h4 className={`font-bold ${alertResult.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+                        {alertResult.title}
+                      </h4>
+                      
+                      {alertResult.data && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Users className="w-4 h-4 text-gray-500" />
+                            <span>
+                              {language === 'as' 
+                                ? `${alertResult.data.recipientsNotified?.toLocaleString()} গৰাকী লোক অবগত কৰা হৈছে`
+                                : `${alertResult.data.recipientsNotified?.toLocaleString()} recipients notified`
+                              }
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            <span>
+                              {language === 'as'
+                                ? `প্ৰাক্ অনুমান সময়: ${alertResult.data.estimatedCompletion}`
+                                : `Est. completion: ${alertResult.data.estimatedCompletion}`
+                              }
+                            </span>
+                          </div>
+                          
+                          {/* Channel breakdown */}
+                          {alertResult.data.channels && (
+                            <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
+                              <p className="text-xs font-medium mb-2">
+                                {language === 'as' ? 'চেনেলবোৰ:' : 'Channels:'}
+                              </p>
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                {alertResult.data.channels.sms && (
+                                  <div className="bg-white dark:bg-slate-700 rounded p-2 text-center">
+                                    <p className="font-bold text-lg">{alertResult.data.channels.sms.delivered}</p>
+                                    <p className="text-gray-500">SMS</p>
+                                  </div>
+                                )}
+                                {alertResult.data.channels.push && (
+                                  <div className="bg-white dark:bg-slate-700 rounded p-2 text-center">
+                                    <p className="font-bold text-lg">{alertResult.data.channels.push.delivered}</p>
+                                    <p className="text-gray-500">Push</p>
+                                  </div>
+                                )}
+                                {alertResult.data.channels.email && (
+                                  <div className="bg-white dark:bg-slate-700 rounded p-2 text-center">
+                                    <p className="font-bold text-lg">{alertResult.data.channels.email.delivered}</p>
+                                    <p className="text-gray-500">Email</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {alertResult.message && (
+                        <p className="text-sm mt-2 text-red-600">{alertResult.message}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
               {/* Emergency Contacts Modal */}
-              {!loading && activeModal === 'emergency' && modalData.contacts && (
+              {!loading && !alertResult && activeModal === 'emergency' && modalData.contacts && (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-500 mb-4">Zone: {selectedBasin?.name}</p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    {language === 'as' ? 'অঞ্চল:' : 'Zone:'} {selectedBasin?.name}
+                  </p>
                   {modalData.contacts.map((contact, idx) => (
                     <div key={idx} className={`p-3 rounded-lg ${darkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
                       <div className="flex items-center justify-between">
@@ -327,7 +429,7 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
               )}
 
               {/* Safety Guidelines Modal */}
-              {!loading && activeModal === 'safety' && modalData.guidelines && (
+              {!loading && !alertResult && activeModal === 'safety' && modalData.guidelines && (
                 <div className="space-y-3">
                   <p className="text-sm text-gray-500 mb-4">{modalData.title}</p>
                   {modalData.guidelines.map((guideline, idx) => (
@@ -342,75 +444,185 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
               )}
 
               {/* Broadcast Alert Modal */}
-              {!loading && activeModal === 'broadcast' && (
+              {!loading && !alertResult && activeModal === 'broadcast' && (
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-500">Zone: {selectedBasin?.name}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-500">
+                      {language === 'as' ? 'অঞ্চল:' : 'Zone:'} {selectedBasin?.name}
+                    </p>
+                    {selectedTemplate && (
+                      <span className="text-xs px-2 py-1 bg-teal-100 text-teal-700 rounded-full">
+                        {selectedTemplate.title}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Alert Templates */}
+                  {templates.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs font-medium mb-2 text-gray-500">
+                        {language === 'as' ? 'টেমপ্লেৰ্টবোৰ:' : 'Templates:'}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {templates.map((template) => (
+                          <button
+                            key={template.id}
+                            onClick={() => handleTemplateSelect(template)}
+                            className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                              selectedTemplate?.id === template.id
+                                ? 'bg-teal-500 text-white border-teal-500'
+                                : darkMode
+                                  ? 'bg-slate-700 border-slate-600 hover:bg-slate-600'
+                                  : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
+                            }`}
+                          >
+                            {template.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <textarea
-                    placeholder="Enter alert message..."
-                    className={`w-full p-3 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-teal-500`}
+                    value={modalData.message || ''}
+                    placeholder={language === 'as' ? 'বাৰ্তা প্ৰবেশ কৰক...' : 'Enter alert message...'}
+                    className={`w-full p-3 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-teal-500`}
                     rows={4}
                     onChange={(e) => setModalData({ ...modalData, message: e.target.value })}
                   />
-                  <div className="flex gap-3">
-                    <select 
-                      className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-300'}`}
-                      onChange={(e) => setModalData({ ...modalData, severity: e.target.value })}
-                    >
-                      <option value="high">High Severity</option>
-                      <option value="medium">Medium Severity</option>
-                      <option value="low">Low Severity</option>
-                    </select>
+                  
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <select 
+                        value={modalData.severity || 'high'}
+                        className={`flex-1 p-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-300'}`}
+                        onChange={(e) => setModalData({ ...modalData, severity: e.target.value })}
+                      >
+                        <option value="high">
+                          {language === 'as' ? 'উচ্চ বিপদ' : 'High Severity'}
+                        </option>
+                        <option value="medium">
+                          {language === 'as' ? 'মধ্যম বিপদ' : 'Medium Severity'}
+                        </option>
+                        <option value="low">
+                          {language === 'as' ? 'কম বিপদ' : 'Low Severity'}
+                        </option>
+                      </select>
+                    </div>
+
+                    {/* Channel Selection */}
+                    <div className="border rounded-lg p-3 ${darkMode ? 'border-slate-600' : 'border-gray-200'}">
+                      <p className="text-xs font-medium mb-2 text-gray-500">
+                        {language === 'as' ? 'চেনেলবোৰ:' : 'Channels:'}
+                      </p>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={modalData.sendSMS !== false}
+                            onChange={(e) => setModalData({ ...modalData, sendSMS: e.target.checked })}
+                            className="rounded text-teal-500 focus:ring-teal-500"
+                          />
+                          <span className="text-sm">SMS</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={modalData.sendPush !== false}
+                            onChange={(e) => setModalData({ ...modalData, sendPush: e.target.checked })}
+                            className="rounded text-teal-500 focus:ring-teal-500"
+                          />
+                          <span className="text-sm">Push</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={modalData.sendEmail !== false}
+                            onChange={(e) => setModalData({ ...modalData, sendEmail: e.target.checked })}
+                            className="rounded text-teal-500 focus:ring-teal-500"
+                          />
+                          <span className="text-sm">Email</span>
+                        </label>
+                      </div>
+                    </div>
+
                     <button
-                      onClick={() => handleBroadcastAlert(modalData.message, modalData.severity || 'high')}
+                      onClick={() => handleBroadcastAlert(
+                        modalData.message, 
+                        modalData.severity || 'high',
+                        [
+                          ...(modalData.sendSMS !== false ? ['sms'] : []),
+                          ...(modalData.sendPush !== false ? ['push'] : []),
+                          ...(modalData.sendEmail !== false ? ['email'] : [])
+                        ]
+                      )}
                       disabled={!modalData.message}
-                      className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold rounded-lg hover:from-red-600 hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                     >
-                      Send Alert
+                      <Radio className="w-5 h-5" />
+                      {language === 'as' ? 'সতৰ্কবাণী পঠিয়াওক' : 'Broadcast Alert'}
                     </button>
                   </div>
                 </div>
               )}
 
               {/* Send Warning Modal */}
-              {!loading && activeModal === 'warning' && (
+              {!loading && !alertResult && activeModal === 'warning' && (
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-500">Zone: {selectedBasin?.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {language === 'as' ? 'অঞ্চল:' : 'Zone:'} {selectedBasin?.name}
+                  </p>
+                  
                   <textarea
-                    placeholder="Enter warning message..."
-                    className={`w-full p-3 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-teal-500`}
+                    value={modalData.message || ''}
+                    placeholder={language === 'as' ? 'বাৰ্তা প্ৰবেশ কৰক...' : 'Enter warning message...'}
+                    className={`w-full p-3 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-teal-500`}
                     rows={4}
                     onChange={(e) => setModalData({ ...modalData, message: e.target.value })}
                   />
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input 
-                        type="checkbox" 
-                        defaultChecked 
-                        className="rounded"
-                      />
-                      <span className="text-sm">Citizens</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input 
-                        type="checkbox" 
-                        className="rounded"
-                      />
-                      <span className="text-sm">Authorities</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input 
-                        type="checkbox" 
-                        className="rounded"
-                      />
-                      <span className="text-sm">Emergency Services</span>
-                    </label>
+                  
+                  <div className="border rounded-lg p-3 ${darkMode ? 'border-slate-600' : 'border-gray-200'}">
+                    <p className="text-xs font-medium mb-3 text-gray-500">
+                      {language === 'as' ? 'প্ৰাপকবোৰ:' : 'Recipients:'}
+                    </p>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={modalData.sendToCitizens !== false}
+                          onChange={(e) => setModalData({ ...modalData, sendToCitizens: e.target.checked })}
+                          className="rounded text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">{language === 'as' ? 'নাগৰিকসকল' : 'Citizens'}</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={modalData.sendToAuthorities || false}
+                          onChange={(e) => setModalData({ ...modalData, sendToAuthorities: e.target.checked })}
+                          className="rounded text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">{language === 'as' ? 'কতৃপক্ষ' : 'Authorities'}</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={modalData.sendToEmergency || false}
+                          onChange={(e) => setModalData({ ...modalData, sendToEmergency: e.target.checked })}
+                          className="rounded text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">{language === 'as' ? 'জৰুৰীকালীন সেৱা' : 'Emergency Services'}</span>
+                      </label>
+                    </div>
                   </div>
+
                   <button
-                    onClick={() => handleSendWarning(modalData.message, ['citizens'])}
+                    onClick={() => handleSendWarning(modalData.message, getRecipients())}
                     disabled={!modalData.message}
-                    className="w-full px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                   >
-                    Send Warning
+                    <Send className="w-5 h-5" />
+                    {language === 'as' ? 'সতৰ্কবাণী পঠিয়াওক' : 'Send Warning'}
                   </button>
                 </div>
               )}
