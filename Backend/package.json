@@ -1,0 +1,20 @@
+{
+  "name": "jolbondhu-backend",
+  "version": "1.0.0",
+  "description": "JSON-Server backend for JolBondhu Dashboard-Citizen App integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "json-server --watch db.json --port 3001 --middlewares cors.js --delay 200",
+    "dev": "json-server --watch db.json --port 3001 --middlewares cors.js --delay 200"
+  },
+  "keywords": [
+    "flood-monitoring",
+    "json-server",
+    "api"
+  ],
+  "author": "JolBondhu Team",
+  "license": "MIT",
+  "dependencies": {
+    "json-server": "^0.17.4"
+  }
+}
