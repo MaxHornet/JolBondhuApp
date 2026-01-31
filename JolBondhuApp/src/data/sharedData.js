@@ -270,6 +270,34 @@ export const emergencyContacts = [
     { name: "Fire & Rescue", nameAssamese: "অগ্নি আৰু উদ্ধাৰ", phone: "101", icon: "flame" }
 ];
 
+// Electricity Emergency - Special category for live wire in flood water situations
+export const electricityEmergencyContacts = [
+    { 
+        name: "ASEB Emergency (Electricity)", 
+        nameAssamese: "ASEB জৰুৰীকালীন (বিদ্যুতি)", 
+        phone: "1912", 
+        icon: "zap",
+        description: "For downed power lines and electrical emergencies",
+        descriptionAssamese: "পতিত হোৱা বিদ্যুতি তাঁৰ আৰু বিদ্যুতি জৰুৰীকালীন ক্ষেত্ৰত"
+    },
+    { 
+        name: "Electricity Dept - Guwahati", 
+        nameAssamese: "বিদ্যুতি বিভাগ - গুৱাহাটী", 
+        phone: "0361-2540001", 
+        icon: "zap",
+        description: "24/7 electricity emergency helpline",
+        descriptionAssamese: "২৪/৭ বিদ্যুতি জৰুৰীকালীন হেল্পলাইন"
+    },
+    { 
+        name: "Fire Service", 
+        nameAssamese: "অগ্নি সেৱা", 
+        phone: "101", 
+        icon: "flame",
+        description: "For electrical fires and rescue",
+        descriptionAssamese: "বিদ্যুতি অগ্নিকাণ্ড আৰু উদ্ধাৰৰ বাবে"
+    }
+];
+
 export const translations = {
     en: {
         appName: "JolBondhu+",
@@ -344,7 +372,21 @@ export const translations = {
         retry: "Retry",
         cancel: "Cancel",
         close: "Close",
-        back: "Back"
+        back: "Back",
+
+        // Electricity Emergency
+        electricityEmergency: "Electricity Emergency",
+        liveWireAlert: "Live Wire in Flood Water",
+        electricityEmergencyDesc: "Report downed power lines or electrical hazards in flooded areas",
+        electricityWarning: "⚠️ DANGER: Do not approach downed power lines. Stay at least 10 meters away.",
+        emergencyCallConfirm: "Call emergency services now?",
+        reportAndCall: "Report & Call",
+        callOnly: "Call Only",
+        electricityIssueType: "Electricity Issue",
+        downedWire: "Downed Power Line",
+        sparkingWire: "Sparking/Electrical Fire",
+        poleDamage: "Damaged Electric Pole",
+        otherElectricity: "Other Electrical Hazard"
     },
     as: {
         appName: "জলবন্ধু+",
@@ -418,12 +460,27 @@ export const translations = {
         retry: "পুনৰ চেষ্টা কৰক",
         cancel: "বাতিল",
         close: "বন্ধ",
-        back: "পিছলৈ"
+        back: "পিছলৈ",
+
+        // Electricity Emergency
+        electricityEmergency: "বিদ্যুতি জৰুৰীকালীন",
+        liveWireAlert: "বানৰ পানীত বিদ্যুতি তাৰ",
+        electricityEmergencyDesc: "বানৰ পানীত পতিত হোৱা বিদ্যুতি তাঁৰ বা বিদ্যুতি বিপদৰ সম্পৰ্কে জনাওক",
+        electricityWarning: "⚠️ বিপদ: পতিত হোৱা বিদ্যুতি তাঁৰৰ ওচৰ নাযাব। কমেও ১০ মিটাৰ আঁতৰত থাকক।",
+        emergencyCallConfirm: "এতিয়া জৰুৰীকালীন সেৱালৈ কল কৰিব নেকি?",
+        reportAndCall: "প্ৰতিবেদন আৰু কল",
+        callOnly: "কল মাথোন",
+        electricityIssueType: "বিদ্যুতি সমস্যা",
+        downedWire: "পতিত হোৱা বিদ্যুতি তাঁৰ",
+        sparkingWire: "তড়িৎ-স্ফুলিঙ্গ/বিদ্যুতি অগ্নিকাণ্ড",
+        poleDamage: "ক্ষতিগ্ৰস্ত বিদ্যুতি খুঁটা",
+        otherElectricity: "অন্যান্য বিদ্যুতি বিপদ"
     }
 };
 
 // Issue types for reporting
 export const issueTypes = [
+    { id: 'electricity_emergency', en: 'Electricity Emergency (LIVE WIRE)', as: 'বিদ্যুতি জৰুৰীকালীন (জীয়া তাঁৰ)', icon: 'zap', priority: 'critical', color: 'text-red-600' },
     { id: 'waterlogging', en: 'Waterlogging', as: 'জলবন্ধতা', icon: 'droplets' },
     { id: 'drain_block', en: 'Drain Blockage', as: 'নলা অৱৰোধ', icon: 'construction' },
     { id: 'flood_damage', en: 'Flood Damage', as: 'বান ক্ষতি', icon: 'home' },

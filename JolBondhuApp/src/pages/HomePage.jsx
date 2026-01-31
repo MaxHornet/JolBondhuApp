@@ -11,15 +11,46 @@ import {
     Shield,
     TrendingUp
 } from 'lucide-react'
+import WeatherCard from '../components/WeatherCard'
+import { useWeather } from '../hooks/useWeather'
+import { useAlerts } from '../hooks/useAlerts'
 
-function HomePage({ basins, alerts, darkMode, language, t }) {
+function HomePage({ basins, darkMode, language, t }) {
+    // Get real-time weather data with 15-minute auto-updates
+    const {
+        weather,
+        waterLevel,
+        zoneRisks,
+        loading: weatherLoading,
+        lastUpdated,
+        isOffline,
+        refresh
+    } = useWeather('jalukbari', { enableAutoUpdate: true })
+
+    // Get real-time alerts from API with 30-second polling
+    const {
+        alerts: apiAlerts,
+        loading: alertsLoading,
+        error: alertsError,
+        lastUpdated: alertsLastUpdated,
+        refreshAlerts
+    } = useAlerts(null, 30000) // 30 second polling
     // Get high risk zones
     const highRiskZones = basins.filter(b => b.riskLevel === 'High')
     const mediumRiskZones = basins.filter(b => b.riskLevel === 'Medium')
     const lowRiskZones = basins.filter(b => b.riskLevel === 'Low')
 
-    // Get recent alerts (newest first)
-    const recentAlerts = alerts.filter(a => a.severity === 'high').slice(0, 3)
+    // Get recent alerts from API (newest first, high severity)
+    const recentAlerts = apiAlerts
+        .filter(a => a.severity === 'high' || a.severity === 'medium')
+        .slice(0, 3)
+        .map(alert => ({
+            ...alert,
+            title: language === 'as' ? alert.titleAssamese : alert.title,
+            message: language === 'as' ? alert.messageAssamese : alert.message,
+            time: alert.issuedAt ? new Date(alert.issuedAt).toLocaleTimeString() : 'Just now',
+            isNew: new Date(alert.issuedAt) > new Date(Date.now() - 30 * 60 * 1000) // Within 30 min
+        }))
 
     // Animation variants
     const containerVariants = {
@@ -66,6 +97,22 @@ function HomePage({ basins, alerts, darkMode, language, t }) {
                     <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 pulse-ring"></div>
                 </motion.div>
             )}
+
+            {/* Real-time Weather Card */}
+            <motion.div variants={itemVariants}>
+                <WeatherCard
+                    weather={weather}
+                    waterLevel={waterLevel}
+                    zoneId="jalukbari"
+                    loading={weatherLoading}
+                    lastUpdated={lastUpdated}
+                    isOffline={isOffline}
+                    onRefresh={refresh}
+                    language={language}
+                    darkMode={darkMode}
+                    t={t}
+                />
+            </motion.div>
 
             {/* Quick Actions */}
             <motion.div variants={itemVariants}>

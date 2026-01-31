@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { reportService } from '../services/reportService'
+import { apiService } from '../services/apiService'
 
 const STORAGE_KEY = 'jolbondhu_pending_reports'
 
@@ -8,6 +10,7 @@ const STORAGE_KEY = 'jolbondhu_pending_reports'
  */
 export function usePendingReports() {
     const [pendingReports, setPendingReports] = useState([])
+    const [isSyncing, setIsSyncing] = useState(false)
 
     // Load pending reports from local storage on mount
     useEffect(() => {
@@ -54,23 +57,76 @@ export function usePendingReports() {
     }
 
     /**
+     * Submit report directly to API (when online)
+     * @param {Object} report - The report to submit
+     */
+    const submitReport = async (report) => {
+        try {
+            const reportWithUser = {
+                ...report,
+                id: `report_${Date.now()}`,
+                userName: reportService.getUserName() || 'Anonymous',
+                status: 'pending',
+                timestamp: new Date().toISOString()
+            }
+            
+            const response = await apiService.submitReport(reportWithUser)
+            return { success: true, data: response }
+        } catch (error) {
+            console.error('Error submitting report:', error)
+            // If API fails, queue it
+            addReport(report)
+            return { success: false, error: error.message, queued: true }
+        }
+    }
+
+    /**
      * Sync all pending reports to the server
-     * In demo mode, this just clears the queue
      */
     const syncReports = async () => {
-        if (pendingReports.length === 0) return
+        if (pendingReports.length === 0) return { success: true, synced: 0 }
 
-        // In a real app, you would POST each report to the server here
-        // For demo purposes, we'll simulate a successful sync
-        console.log('Syncing reports:', pendingReports)
+        setIsSyncing(true)
+        const results = []
 
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        try {
+            for (const report of pendingReports) {
+                try {
+                    const reportData = {
+                        basinId: report.basinId || 'unknown',
+                        userName: report.userName || reportService.getUserName() || 'Anonymous',
+                        issueType: report.issueType,
+                        description: report.description,
+                        photoData: report.photoData,
+                        location: report.location,
+                        timestamp: report.timestamp,
+                        status: 'pending',
+                        language: 'en'
+                    }
+                    
+                    await apiService.submitReport(reportData)
+                    results.push({ id: report.id, status: 'synced' })
+                } catch (error) {
+                    results.push({ id: report.id, status: 'failed', error: error.message })
+                }
+            }
 
-        // Mark all as synced (in demo, just clear them)
-        setPendingReports([])
+            // Remove successfully synced reports
+            const syncedIds = results.filter(r => r.status === 'synced').map(r => r.id)
+            setPendingReports(prev => prev.filter(r => !syncedIds.includes(r.id)))
 
-        return { success: true, synced: pendingReports.length }
+            return { 
+                success: true, 
+                synced: syncedIds.length,
+                failed: results.filter(r => r.status === 'failed').length,
+                results 
+            }
+        } catch (error) {
+            console.error('Sync error:', error)
+            return { success: false, error: error.message }
+        } finally {
+            setIsSyncing(false)
+        }
     }
 
     /**
@@ -81,8 +137,10 @@ export function usePendingReports() {
     return {
         pendingReports,
         pendingCount,
+        isSyncing,
         addReport,
         removeReport,
+        submitReport,
         syncReports
     }
 }
