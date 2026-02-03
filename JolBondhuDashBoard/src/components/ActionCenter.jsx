@@ -165,9 +165,9 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
   };
 
   // Handle Send Warning - NOW USING REAL API SERVICE
-  const handleSendWarning = async (message, recipients = ['citizens']) => {
+  const handleSendWarning = async (message, recipients = ['citizens'], channels = ['sms', 'whatsapp', 'push']) => {
     if (!message || !selectedBasin) {
-      alert(language === 'as' ? 'অনুগ্ৰহ কৰি বাৰ্তা প্ৰবেশ কৰক' : 'Please enter a message');
+      alert(language === 'as' ? 'অনুগ্রহ করি বার্তা প্রবেশ করুন' : 'Please enter a message');
       return;
     }
 
@@ -180,6 +180,7 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
         message: message,
         recipients: recipients,
         priority: 'high',
+        channels: channels,
         timestamp: new Date().toISOString()
       };
 
@@ -364,13 +365,13 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
                             </span>
                           </div>
                           
-                          {/* Channel breakdown */}
+                           {/* Channel breakdown */}
                           {alertResult.data.channels && (
                             <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
                               <p className="text-xs font-medium mb-2">
                                 {language === 'as' ? 'চেনেলবোৰ:' : 'Channels:'}
                               </p>
-                              <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="grid grid-cols-4 gap-2 text-xs">
                                 {alertResult.data.channels.sms && (
                                   <div className="bg-white dark:bg-slate-700 rounded p-2 text-center">
                                     <p className="font-bold text-lg">{alertResult.data.channels.sms.delivered}</p>
@@ -381,6 +382,12 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
                                   <div className="bg-white dark:bg-slate-700 rounded p-2 text-center">
                                     <p className="font-bold text-lg">{alertResult.data.channels.push.delivered}</p>
                                     <p className="text-gray-500">Push</p>
+                                  </div>
+                                )}
+                                {alertResult.data.channels.whatsapp && (
+                                  <div className="bg-white dark:bg-slate-700 rounded p-2 text-center">
+                                    <p className="font-bold text-lg">{alertResult.data.channels.whatsapp.delivered}</p>
+                                    <p className="text-gray-500">WhatsApp</p>
                                   </div>
                                 )}
                                 {alertResult.data.channels.email && (
@@ -511,7 +518,7 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
                     </div>
 
                     {/* Channel Selection */}
-                    <div className="border rounded-lg p-3 ${darkMode ? 'border-slate-600' : 'border-gray-200'}">
+                    <div className={`border rounded-lg p-3 ${darkMode ? 'border-slate-600' : 'border-gray-200'}`}>
                       <p className="text-xs font-medium mb-2 text-gray-500">
                         {language === 'as' ? 'চেনেলবোৰ:' : 'Channels:'}
                       </p>
@@ -537,6 +544,15 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input 
                             type="checkbox" 
+                            checked={modalData.sendWhatsApp !== false}
+                            onChange={(e) => setModalData({ ...modalData, sendWhatsApp: e.target.checked })}
+                            className="rounded text-teal-500 focus:ring-teal-500"
+                          />
+                          <span className="text-sm">WhatsApp</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox" 
                             checked={modalData.sendEmail !== false}
                             onChange={(e) => setModalData({ ...modalData, sendEmail: e.target.checked })}
                             className="rounded text-teal-500 focus:ring-teal-500"
@@ -553,6 +569,7 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
                         [
                           ...(modalData.sendSMS !== false ? ['sms'] : []),
                           ...(modalData.sendPush !== false ? ['push'] : []),
+                          ...(modalData.sendWhatsApp !== false ? ['whatsapp'] : []),
                           ...(modalData.sendEmail !== false ? ['email'] : [])
                         ]
                       )}
@@ -616,8 +633,48 @@ const ActionCenter = ({ darkMode, language, t, selectedBasin }) => {
                     </div>
                   </div>
 
+                  {/* Channel Selection for Warning */}
+                  <div className={`border rounded-lg p-3 ${darkMode ? 'border-slate-600' : 'border-gray-200'}`}>
+                    <p className="text-xs font-medium mb-2 text-gray-500">
+                      {language === 'as' ? 'চেনেলবোৰ:' : 'Channels:'}
+                    </p>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={modalData.sendSMS !== false}
+                          onChange={(e) => setModalData({ ...modalData, sendSMS: e.target.checked })}
+                          className="rounded text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">SMS</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={modalData.sendWhatsApp !== false}
+                          onChange={(e) => setModalData({ ...modalData, sendWhatsApp: e.target.checked })}
+                          className="rounded text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">WhatsApp</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={modalData.sendPush !== false}
+                          onChange={(e) => setModalData({ ...modalData, sendPush: e.target.checked })}
+                          className="rounded text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">Push</span>
+                      </label>
+                    </div>
+                  </div>
+
                   <button
-                    onClick={() => handleSendWarning(modalData.message, getRecipients())}
+                    onClick={() => handleSendWarning(modalData.message, getRecipients(), [
+                      ...(modalData.sendSMS !== false ? ['sms'] : []),
+                      ...(modalData.sendWhatsApp !== false ? ['whatsapp'] : []),
+                      ...(modalData.sendPush !== false ? ['push'] : [])
+                    ])}
                     disabled={!modalData.message}
                     className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                   >

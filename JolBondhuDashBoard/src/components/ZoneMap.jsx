@@ -1,16 +1,9 @@
-// AGENT: Update PROJECT_CONTEXT.md after any changes
-// Location: ./PROJECT_CONTEXT.md  ← RELATIVE PATH (auto-detected)
-// Protocol: See AGENTS_UPDATE_PROTOCOL.md in workspace root
-// RULE: Always maintain context for current and future agents
-// NOTE: If context not found here, search parent directories
-// PROJECT FINGERPRINT: jolbondhu-dashboard-testing2
-
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { stationPolygons } from '../data/stationPolygons';
 
-// Fix for default markers
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -21,78 +14,69 @@ L.Icon.Default.mergeOptions({
 const riskColors = {
   High: { fill: '#ef4444', stroke: '#dc2626' },
   Medium: { fill: '#eab308', stroke: '#ca8a04' },
-  Low: { fill: '#22c55e', stroke: '#16a34a' },
+  Low: { fill: '#22c55e', stroke: '#16a34a' }
 };
 
-const ZoneMap = ({ basins: initialBasins, selectedBasin, onBasinSelect, darkMode, language, t }) => {
+const stationRiskColors = {
+  High: { fill: '#f87171', stroke: '#dc2626', dash: '5, 5' },
+  Medium: { fill: '#fcd34d', stroke: '#ca8a04', dash: '5, 5' },
+  Low: { fill: '#86efac', stroke: '#16a34a', dash: '5, 5' }
+};
+
+const ZoneMap = ({ 
+  basins: initialBasins, 
+  selectedBasin, 
+  onBasinSelect,
+  selectedStation,
+  onStationSelect,
+  darkMode, 
+  language, 
+  t,
+  showStations = true
+}) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const polygonsRef = useRef([]);
+  const stationPolygonsRef = useRef([]);
+  const markersRef = useRef([]);
   const [isClient, setIsClient] = useState(false);
 
-  // TODO: API INTEGRATION - Fetch real-time basin polygons with polling
-  // Endpoint: GET https://api.yourservice.com/basins/geojson
-  // Headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-  // Response: Array of basin objects with id, name, nameAssamese, polygon coordinates, riskLevel, etc.
-  // 
-  // Example implementation with polling every 120 seconds:
-  // const [basins, setBasins] = useState(initialBasins);
-  // useEffect(() => {
-  //   const fetchBasins = async () => {
-  //     try {
-  //       const response = await fetch('https://api.yourservice.com/basins/geojson', {
-  //         headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
-  //       });
-  //       const data = await response.json();
-  //       setBasins(data);
-  //     } catch (error) {
-  //       console.error('Error fetching basin polygons:', error);
-  //     }
-  //   };
-  //   
-  //   fetchBasins(); // Initial fetch
-  //   const interval = setInterval(fetchBasins, 120000); // Poll every 120 seconds
-  //   return () => clearInterval(interval);
-  // }, []);
-  
-  // TODO: API INTEGRATION - Alternative: WebSocket for real-time polygon updates
-  // For more frequent updates, use WebSocket:
-  // const ws = new WebSocket('wss://api.yourservice.com/ws/basins');
-  // ws.onmessage = (event) => {
-  //   const data = JSON.parse(event.data);
-  //   setBasins(data);
-  // };
-  const [basins] = useState(initialBasins); // DEMO DATA - remove this line when using API
+  const [basins] = useState(initialBasins);
 
-  // Center on Guwahati area
   const center = [26.1480, 91.6750];
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Initialize map only once on client
   useEffect(() => {
     if (!isClient || !mapContainerRef.current || mapInstanceRef.current) return;
 
     const map = L.map(mapContainerRef.current, {
       center: center,
-      zoom: 12,
+      zoom: 8,
       zoomControl: true,
       scrollWheelZoom: true,
     });
 
-    // Use CartoDB Voyager tiles (like MainProject)
-    L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      }
-    ).addTo(map);
+    if (darkMode) {
+      L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        }
+      ).addTo(map);
+    } else {
+      L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        }
+      ).addTo(map);
+    }
 
     mapInstanceRef.current = map;
 
-    // Handle resize
     const handleResize = () => {
       setTimeout(() => map.invalidateSize(), 100);
     };
@@ -105,24 +89,20 @@ const ZoneMap = ({ basins: initialBasins, selectedBasin, onBasinSelect, darkMode
         mapInstanceRef.current = null;
       }
     };
-  }, [isClient]);
+  }, [isClient, darkMode]);
 
-  // Update polygons when basins or selection changes
   useEffect(() => {
     if (!mapInstanceRef.current || !isClient) return;
 
-    // Remove existing polygons
     polygonsRef.current.forEach((polygon) => polygon.remove());
     polygonsRef.current = [];
 
-    // Add new polygons for each basin
-    basins.forEach((basin) => {
+    (basins || []).forEach((basin) => {
       if (!basin.polygon || basin.polygon.length === 0) return;
 
       const isSelected = selectedBasin?.id === basin.id;
       const colors = riskColors[basin.riskLevel] || riskColors.Low;
       
-      // Get bilingual name
       const name = language === 'as' && basin.nameAssamese 
         ? basin.nameAssamese 
         : basin.name;
@@ -135,7 +115,6 @@ const ZoneMap = ({ basins: initialBasins, selectedBasin, onBasinSelect, darkMode
         dashArray: isSelected ? undefined : '5, 5',
       }).addTo(mapInstanceRef.current);
 
-      // Add tooltip with bilingual content
       const riskLevelText = language === 'as' 
         ? (basin.riskLevel === 'High' ? 'উচ্চ' : basin.riskLevel === 'Medium' ? 'মধ্যম' : 'নিম্ন')
         : basin.riskLevel;
@@ -149,17 +128,13 @@ const ZoneMap = ({ basins: initialBasins, selectedBasin, onBasinSelect, darkMode
             }; font-weight: 600;">${riskLevelText}</span></p>
             <p style="margin: 2px 0;"><strong>${t.currentRainfall}:</strong> ${basin.rainfall} ${t.mm}</p>
             <p style="margin: 2px 0;"><strong>${t.riverLevel}:</strong> ${basin.riverLevel} m</p>
-            <p style="margin: 2px 0;"><strong>${t.drainageBlockage}:</strong> ${basin.drainageBlockage}%</p>
           </div>
         </div>
       `;
 
       polygon.bindTooltip(tooltipContent, { sticky: true });
+      polygon.on('click', () => onBasinSelect && onBasinSelect(basin));
 
-      // Handle click
-      polygon.on('click', () => onBasinSelect(basin));
-
-      // Hover effects
       polygon.on('mouseover', () => {
         polygon.setStyle({ fillOpacity: 0.6, weight: 3 });
       });
@@ -172,19 +147,91 @@ const ZoneMap = ({ basins: initialBasins, selectedBasin, onBasinSelect, darkMode
 
       polygonsRef.current.push(polygon);
     });
+  }, [basins, selectedBasin, language, t, isClient, onBasinSelect]);
 
-    // Fly to selected basin
-    if (selectedBasin && selectedBasin.coords) {
-      mapInstanceRef.current.flyTo(selectedBasin.coords, 14, {
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isClient || !showStations) return;
+
+    stationPolygonsRef.current.forEach((polygon) => polygon.remove());
+    markersRef.current.forEach((marker) => marker.remove());
+    stationPolygonsRef.current = [];
+    markersRef.current = [];
+
+    stationPolygons.forEach((station) => {
+      if (!station.polygon || station.polygon.length === 0) return;
+
+      const isSelected = selectedStation?.id === station.id;
+      const colors = stationRiskColors[station.riskLevel] || stationRiskColors.Low;
+
+      const stationPolygon = L.polygon(station.polygon, {
+        color: isSelected ? '#3b82f6' : colors.stroke,
+        fillColor: colors.fill,
+        fillOpacity: isSelected ? 0.6 : 0.25,
+        weight: isSelected ? 3 : 1.5,
+        dashArray: colors.dash,
+      }).addTo(mapInstanceRef.current);
+
+      const tooltipContent = `
+        <div style="min-width: 200px; padding: 4px;">
+          <p style="font-weight: 600; margin: 0 0 4px 0; color: ${
+            station.riskLevel === 'High' ? '#dc2626' : 
+            station.riskLevel === 'Medium' ? '#ca8a04' : '#16a34a'
+          };">${station.name}</p>
+          <div style="font-size: 11px; color: #666;">
+            <p style="margin: 2px 0;"><strong>Station:</strong> ${station.stationCode}</p>
+            <p style="margin: 2px 0;"><strong>River:</strong> ${station.riverName}</p>
+            <p style="margin: 2px 0;"><strong>District:</strong> ${station.district}</p>
+            <p style="margin: 2px 0;"><strong>Risk:</strong> <span style="color: ${
+              station.riskLevel === 'High' ? '#dc2626' : 
+              station.riskLevel === 'Medium' ? '#ca8a04' : '#16a34a'
+            };">${station.riskLevel}</span></p>
+          </div>
+        </div>
+      `;
+
+      stationPolygon.bindTooltip(tooltipContent, { sticky: true });
+      stationPolygon.on('click', () => {
+        if (onStationSelect) {
+          onStationSelect({
+            ...station,
+            polygon: station.polygon,
+            coords: [station.lat, station.lon]
+          });
+        }
+      });
+
+      stationPolygon.on('mouseover', () => {
+        stationPolygon.setStyle({ fillOpacity: 0.5, weight: 2 });
+      });
+      stationPolygon.on('mouseout', () => {
+        stationPolygon.setStyle({
+          fillOpacity: isSelected ? 0.6 : 0.25,
+          weight: isSelected ? 3 : 1.5,
+        });
+      });
+
+      stationPolygonsRef.current.push(stationPolygon);
+    });
+  }, [showStations, selectedStation, isClient, onStationSelect]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    if (selectedStation && selectedStation.coords) {
+      mapInstanceRef.current.flyTo(selectedStation.coords, 12, {
+        duration: 0.8,
+      });
+    } else if (selectedBasin && selectedBasin.coords) {
+      mapInstanceRef.current.flyTo(selectedBasin.coords, 12, {
         duration: 0.8,
       });
     }
-  }, [basins, selectedBasin, language, t, isClient, onBasinSelect]);
+  }, [selectedStation, selectedBasin]);
 
   if (!isClient) {
     return (
       <div className={`rounded-2xl overflow-hidden border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} shadow-sm`}>
-        <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex items-center gap-2">
+        <div className={`p-4 border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'} flex items-center gap-2`}>
           <MapPin className="text-teal-500" size={20} />
           <h3 className="font-semibold">{t.liveZoneMap}</h3>
         </div>
@@ -197,7 +244,7 @@ const ZoneMap = ({ basins: initialBasins, selectedBasin, onBasinSelect, darkMode
 
   return (
     <div className={`rounded-2xl overflow-hidden border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} shadow-sm`}>
-      <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex items-center gap-2">
+      <div className={`p-4 border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'} flex items-center gap-2`}>
         <MapPin className="text-teal-500" size={20} />
         <h3 className="font-semibold">{t.liveZoneMap}</h3>
       </div>
@@ -205,7 +252,6 @@ const ZoneMap = ({ basins: initialBasins, selectedBasin, onBasinSelect, darkMode
       <div className="relative h-64 w-full">
         <div ref={mapContainerRef} className="h-full w-full" />
         
-        {/* Legend */}
         <div className={`absolute bottom-3 left-3 z-[1000] rounded-lg p-2 shadow-lg backdrop-blur-sm ${darkMode ? 'bg-slate-800/90' : 'bg-white/90'}`}>
           <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {t.riskLevel}
@@ -226,11 +272,33 @@ const ZoneMap = ({ basins: initialBasins, selectedBasin, onBasinSelect, darkMode
               );
             })}
           </div>
+          {showStations && (
+            <>
+              <div className="border-t my-2 pt-2">
+                <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Stations
+                </p>
+                {['High', 'Medium', 'Low'].map((level) => {
+                  const stationLabel = language === 'as' 
+                    ? (level === 'High' ? 'উচ্চ' : level === 'Medium' ? 'মধ্যম' : 'নিম্ন')
+                    : level;
+                  return (
+                    <div key={`station-${level}`} className="flex items-center gap-2">
+                      <div
+                        className="h-2 w-2 rounded-sm"
+                        style={{ backgroundColor: stationRiskColors[level].fill }}
+                      />
+                      <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{stationLabel}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Guwahati Label */}
         <div className={`absolute bottom-3 right-3 z-[1000] rounded-lg px-2 py-1 text-xs font-medium shadow-lg backdrop-blur-sm ${darkMode ? 'bg-slate-800/90 text-gray-300' : 'bg-white/90 text-gray-700'}`}>
-          Guwahati, Assam
+          Assam, India
         </div>
       </div>
     </div>
