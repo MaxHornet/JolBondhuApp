@@ -33,6 +33,18 @@ export const apiService = {
     });
   },
 
+  getMyReports: async (userName) => {
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports?userName=${encodeURIComponent(userName)}&_sort=timestamp&_order=desc`);
+  },
+
+  updateReportUpi: async (reportId, upiId) => {
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ upiId })
+    });
+  },
+
   getReports: async (basinId = null, status = null) => {
     let url = `${API_BASE_URL}/reports`;
     const params = new URLSearchParams();

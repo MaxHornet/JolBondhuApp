@@ -14,6 +14,7 @@ import MapPage from './pages/MapPage'
 import ReportPage from './pages/ReportPage'
 import AlertsPage from './pages/AlertsPage'
 import SafetyPage from './pages/SafetyPage'
+import MyReportsPage from './pages/MyReportsPage'
 
 // Data
 import { translations, basins, alerts } from './data/sharedData'
@@ -191,6 +192,16 @@ function App() {
                                     element={
                                         <SafetyPage
                                             basins={basins}
+                                            darkMode={darkMode}
+                                            language={language}
+                                            t={t}
+                                        />
+                                    }
+                                />
+                                <Route
+                                    path="/my-reports"
+                                    element={
+                                        <MyReportsPage
                                             darkMode={darkMode}
                                             language={language}
                                             t={t}
