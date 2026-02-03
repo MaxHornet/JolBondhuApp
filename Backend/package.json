@@ -4,8 +4,10 @@
   "description": "JSON-Server backend for JolBondhu Dashboard-Citizen App integration",
   "main": "server.js",
   "scripts": {
-    "start": "json-server --watch db.json --port 3001 --middlewares cors.js --delay 200",
-    "dev": "json-server --watch db.json --port 3001 --middlewares cors.js --delay 200"
+    "start": "node server.js",
+    "dev": "json-server --watch db.json --port 3001 --middlewares cors.js --delay 200",
+    "test-whatsapp": "node testReport.js",
+    "register-user": "node registerAdmin.js"
   },
   "keywords": [
     "flood-monitoring",
@@ -15,6 +17,9 @@
   "author": "JolBondhu Team",
   "license": "MIT",
   "dependencies": {
-    "json-server": "^0.17.4"
+    "json-server": "^0.17.4",
+    "twilio": "^5.3.7",
+    "dotenv": "^17.2.3",
+    "cors": "^2.8.5"
   }
 }

@@ -1,0 +1,5 @@
+[dotenv@17.2.3] injecting env (4) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+JolBondhu Backend running on port 3001
+WhatsApp notifications enabled
+[0mGET /waterLevels [36m304[0m 26.393 ms - -[0m
