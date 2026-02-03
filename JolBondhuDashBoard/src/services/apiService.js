@@ -36,16 +36,16 @@ export const apiService = {
   getReports: async (basinId = null, status = null) => {
     let url = `${API_BASE_URL}/reports`;
     const params = new URLSearchParams();
-    
+
     if (basinId) params.append('basinId', basinId);
     if (status) params.append('status', status);
     params.append('_sort', 'timestamp');
     params.append('_order', 'desc');
-    
+
     if (params.toString()) {
       url += `?${params.toString()}`;
     }
-    
+
     return fetchWithErrorHandling(url);
   },
 
@@ -57,20 +57,108 @@ export const apiService = {
     });
   },
 
+  // Reward System - Approve Report with Reward
+  approveReport: async (reportId, { rewardAmount, upiId, adminId, adminNote }) => {
+    const randomReward = rewardAmount || Math.floor(Math.random() * 101) + 50;
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rewardAmount: randomReward,
+        upiId: upiId,
+        rewardStatus: 'approved',
+        approvedAt: new Date().toISOString(),
+        approvedBy: adminId || 'admin',
+        adminNote: adminNote || ''
+      })
+    });
+  },
+
+  // Reward System - Reject Report
+  rejectReport: async (reportId, { reason, adminId, adminNote }) => {
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rewardAmount: 0,
+        rewardStatus: 'rejected',
+        rewardReason: reason,
+        rejectedAt: new Date().toISOString(),
+        rejectedBy: adminId || 'admin',
+        adminNote: adminNote || ''
+      })
+    });
+  },
+
+  // Reward System - Disburse Reward
+  disburseReward: async (reportId) => {
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rewardStatus: 'disbursed',
+        disbursedAt: new Date().toISOString()
+      })
+    });
+  },
+
+  // Reward System - Add Verifier
+  addVerifier: async (reportId, verifier) => {
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        $push: {
+          verifiers: {
+            id: `verifier_${Date.now()}`,
+            name: verifier.name || 'Anonymous',
+            verifiedAt: new Date().toISOString(),
+            rewardAmount: 30
+          }
+        },
+        verificationCount: { $inc: 1 }
+      })
+    });
+  },
+
+  // Reward System - Update UPI ID
+  updateReportUpi: async (reportId, upiId) => {
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ upiId })
+    });
+  },
+
+  // Reward System - Get Reports by Incident
+  getIncidentReports: async (incidentId) => {
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports?incidentId=${incidentId}`);
+  },
+
+  // Reward System - Get Reports by Reward Status
+  getReportsByRewardStatus: async (status) => {
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports?rewardStatus=${status}&_sort=timestamp&_order=desc`);
+  },
+
+  // Reward System - Get Pending Rewards
+  getPendingRewards: async () => {
+    return fetchWithErrorHandling(`${API_BASE_URL}/reports?rewardStatus=pending&_sort=timestamp&_order=desc`);
+  },
+
   // Alerts
   getAlerts: async (basinId = null, active = true) => {
     let url = `${API_BASE_URL}/alerts`;
     const params = new URLSearchParams();
-    
+
     if (basinId) params.append('basinId', basinId);
     if (active) params.append('active', 'true');
     params.append('_sort', 'issuedAt');
     params.append('_order', 'desc');
-    
+
     if (params.toString()) {
       url += `?${params.toString()}`;
     }
-    
+
     return fetchWithErrorHandling(url);
   },
 
@@ -94,6 +182,37 @@ export const apiService = {
   getBroadcasts: async () => {
     return fetchWithErrorHandling(`${API_BASE_URL}/broadcasts?_sort=issuedAt&_order=desc`);
   },
+
+  // Water Level Stations
+  getWaterLevels: async () => {
+    try {
+      // Try to fetch from backend first
+      return await fetchWithErrorHandling(`${API_BASE_URL}/waterLevels`);
+    } catch (error) {
+      // Fallback to local JSON file
+      console.warn('Falling back to local water levels data');
+      try {
+        const response = await fetch('/scripts/water_levels.json');
+        if (response.ok) {
+          return await response.json();
+        }
+      } catch (e) {
+        console.error('Error loading water levels:', e);
+      }
+      return [];
+    }
+  },
+
+  getWaterLevelsByDistrict: async (district) => {
+    const allLevels = await apiService.getWaterLevels();
+    return allLevels.filter(wl => wl.district?.toLowerCase() === district?.toLowerCase());
+  },
+
+  getHighRiskWaterLevels: async () => {
+    const allLevels = await apiService.getWaterLevels();
+    return allLevels.filter(wl => wl.riskLevel === 'High' || wl.riskLevel === 'Medium');
+  },
+
 
   // Polling helper
   startPolling: (callback, interval = 30000) => {
