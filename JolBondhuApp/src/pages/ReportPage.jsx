@@ -19,8 +19,11 @@ import {
     Square,
     Play,
     Pause,
-    Trash2
+    Trash2,
+    Link as LinkIcon,
+    Wallet
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { issueTypes } from '../data/sharedData'
 import { reportService } from '../services/reportService'
 
@@ -34,6 +37,7 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
     const [gettingLocation, setGettingLocation] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitStatus, setSubmitStatus] = useState(null) // 'success' | 'queued' | null
+    const [upiId, setUpiId] = useState('')
 
     // Manual location states
     const [useManualLocation, setUseManualLocation] = useState(false)
@@ -320,10 +324,11 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
             issueType,
             description,
             photoData: photoPreview,
-            voiceData: voiceData, // Include voice data
+            voiceData: voiceData,
             location,
             timestamp: new Date().toISOString(),
-            userName: userName || reportService.getUserName() || 'Anonymous'
+            userName: userName || reportService.getUserName() || 'Anonymous',
+            upiId: upiId.trim() || ''
         }
 
         // Submit to API if online, otherwise queue
@@ -361,6 +366,7 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
             setAudioBlob(null)
             setAudioUrl(null)
             setRecordingTime(0)
+            setUpiId('')
             setSubmitStatus(null)
         }, 3000)
     }
@@ -811,6 +817,38 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                         <span className="text-sm">{t.offline}</span>
                     </div>
                 )}
+
+                {/* UPI ID (Optional) */}
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <label className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                            {t.upiId || 'UPI ID'}
+                        </label>
+                        <Link
+                            to="/my-reports"
+                            className={`text-xs flex items-center gap-1 px-2 py-1 rounded-full transition-colors ${darkMode ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                        >
+                            <LinkIcon className="w-3 h-3" />
+                            {t.viewMyReports || 'My Reports'}
+                        </Link>
+                    </div>
+                    <div className="relative">
+                        <Wallet className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`} />
+                        <input
+                            type="text"
+                            value={upiId}
+                            onChange={(e) => setUpiId(e.target.value)}
+                            placeholder={t.upiIdPlaceholder || 'yourname@upi'}
+                            className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all focus:ring-2 focus:ring-primary-500 focus:border-transparent ${darkMode
+                                ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500'
+                                : 'bg-white border-gray-200 text-gray-800 placeholder:text-gray-400'
+                                }`}
+                        />
+                    </div>
+                    <p className={`text-xs mt-1.5 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                        {t.upiOptional || 'Add UPI ID to receive reward (optional)'}
+                    </p>
+                </div>
 
                 {/* Submit Button */}
                 <motion.button
