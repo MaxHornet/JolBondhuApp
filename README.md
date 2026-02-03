@@ -1,326 +1,238 @@
-# JolBondhu - Flood Monitoring System 🌊
+# Jolbondhu Flood Monitoring Dashboard 🌊
+
+A real-time flood monitoring and risk assessment dashboard for Guwahati, Assam. Fully integrated with citizen reporting system via REST API.
 
 [![React](https://img.shields.io/badge/React-18.2.0-blue)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.x-646CFF)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC)](https://tailwindcss.com/)
-[![PWA](https://img.shields.io/badge/PWA-Ready-success)](https://web.dev/progressive-web-apps/)
-[![API](https://img.shields.io/badge/API-RESTful-success)](http://localhost:3001)
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)]()
+[![Vite](https://img.shields.io/badge/Vite-5.4.21-646CFF)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.3.6-38B2AC)](https://tailwindcss.com/)
+[![API](https://img.shields.io/badge/API-Integrated-success)](http://localhost:3001)
 
-> **JolBondhu (জলবন্ধু)** - "Water Friend" - Real-time flood monitoring and citizen reporting system for Guwahati, Assam.
+## Overview
 
-## 🎯 Overview
+Jolbondhu (জলবন্ধু - "Water Friend") provides real-time flood monitoring across 9 critical zones in Guwahati. The dashboard receives live citizen reports and sends alerts to the citizen mobile app via REST API.
 
-JolBondhu is a comprehensive flood monitoring solution that connects municipal authorities with citizens through a real-time, bidirectional communication platform. The system consists of three integrated components working together to provide early warnings, collect ground-level reports, and coordinate emergency responses.
+## Key Features
 
-### System Components
+### 🗺️ Interactive Zone Map
+Leaflet-powered polygon map with CartoDB Voyager tiles. Zones are color-coded by risk level (High=Red, Medium=Yellow, Low=Green). Click any zone to select it and the map flies to that location with smooth animation.
 
-```
-┌─────────────────┐      ┌──────────────┐      ┌─────────────────┐
-│  Citizen App    │◄────►│  Backend API │◄────►│    Dashboard    │
-│   (Port 5174)   │ HTTP │  (Port 3001) │ HTTP │   (Port 5173)   │
-└─────────────────┘      └──────────────┘      └─────────────────┘
-        │                         │                      │
-        │ Submit Report           │ Store in db.json     │ View Reports
-        │ Get Alerts              │                      │ Send Alerts
-        └─────────────────────────┘                      └──────────┘
-```
+### 🌍 9 Monitoring Zones
+Complete coverage of flood-prone areas including Jalukbari (Main), Maligaon, Fancy Bazar, Bharalumukh, Brahmaputra North Bank, Barpeta Zone, Nalbari Area, Kamrup Central, and Goalpara Zone.
 
-| Component | Description | Port | Tech Stack |
-|-----------|-------------|------|------------|
-| **[Dashboard](./JolBondhuDashBoard/)** | Municipal control center for monitoring zones and managing alerts | 5173 | React + Vite + Tailwind |
-| **[Citizen App](./JolBondhuApp/)** | Mobile PWA for citizens to report issues and receive warnings | 5174 | React + PWA + Leaflet |
-| **[Backend](./backend/)** | REST API server providing real-time data synchronization | 3001 | JSON-Server |
+### 🌊 Real-time Risk Status
+Live API-connected status card displays current zone data with rainfall levels (mm), river height (m), drainage blockage percentage, and dynamic risk badges. Updates every 30 seconds automatically. High-risk zones trigger visual flood alerts.
 
-## ✨ Key Features
+### 📊 Zone-Linked Components
+When you select a zone, the entire dashboard updates: Citizen Feed filters to show only that zone's reports, Rainfall Chart displays 6-hour history, and Risk Status updates with zone-specific data.
 
-### Dashboard (Admin Interface)
-- 🗺️ **Interactive Zone Map** - 9 flood monitoring zones with polygon overlays
-- 📊 **Real-time Monitoring** - Live risk status, rainfall, and river levels
-- 📡 **Citizen Reports** - View and manage reports with photos and GPS
-- 📢 **Alert Broadcasting** - Send targeted or mass alerts to citizens
-- 🌐 **Bilingual Support** - English and Assamese (অসমীয়া)
-- 🌙 **Dark Mode** - Eye-friendly interface toggle
+### 🌐 Dual-Language Support
+Complete bilingual interface with EN | অসমীয়ä toggle. All zone names, reports, locations, and UI labels translate instantly. Maintains readability in both languages.
 
-### Citizen App (Mobile PWA)
-- 📷 **Issue Reporting** - Submit reports with photos and GPS location
-- 🔔 **Real-time Alerts** - Receive flood warnings from authorities
-- 🗺️ **Zone Mapping** - View flood risk zones on interactive map
-- 📴 **Offline-First** - Works without internet, syncs when online
-- 👤 **Anonymous Reporting** - No registration required
-- 📱 **Installable** - Add to home screen like native app
+### ⚡ Action Center
+Four functional action buttons with modal interfaces: Emergency Contacts (local emergency numbers), Safety Guidelines (risk-specific instructions), Broadcast Alert (mass notifications to all citizens), Send Warning (targeted zone-specific alerts). All alerts sent via API to citizen app instantly.
 
-### Backend API
-- 🔄 **RESTful API** - Full CRUD operations for all data
-- ⚡ **Real-time Sync** - 30-second polling across all clients
-- 💾 **Auto-Persist** - JSON database with automatic saving
-- 🌐 **CORS Enabled** - Cross-origin support for local development
+### 📡 Real-Time Citizen Reports
+Live feed of citizen-submitted reports with photos and GPS coordinates. Reports appear in dashboard within 30 seconds of submission. Filter by zone and update status (pending → under review → resolved).
 
-## 🗺️ Monitoring Zones (9 Basins)
+### 📱 Collapsible Sidebar
+Hamburger menu toggle (☰) controls sidebar visibility. Expanded: 256px with full navigation text. Collapsed: 64px icon-only mode. Smooth CSS transitions on toggle.
 
-| ID | Zone Name | Location | Risk Level | Coordinates |
-|----|-----------|----------|------------|-------------|
-| `jalukbari` | Jalukbari (Main) | Guwahati, Kamrup | 🔴 High | 26.1445, 91.6616 |
-| `maligaon` | Maligaon | Guwahati, Kamrup | 🟡 Medium | 26.1520, 91.6750 |
-| `fancy-bazar` | Fancy Bazar | Guwahati, Kamrup | 🟢 Low | 26.1600, 91.6900 |
-| `bharalumukh` | Bharalumukh | Guwahati, Kamrup | 🟡 Medium | 26.1350, 91.6800 |
-| `brahmaputra-north` | Brahmaputra North Bank | Sonitpur | 🔴 High | 26.6736, 92.8478 |
-| `barpeta` | Barpeta Zone | Barpeta | 🟡 Medium | 26.3225, 91.0055 |
-| `nalbari` | Nalbari Area | Nalbari | 🟢 Low | 26.4454, 91.4419 |
-| `kamrup-central` | Kamrup Central | Kamrup | 🟢 Low | 26.1445, 91.7362 |
-| `goalpara` | Goalpara Zone | Goalpara | 🟡 Medium | 26.1649, 90.6252 |
+### 🌙 Dark Mode
+Full dark theme support using slate color palette. Toggle button in TopBar switches between light and dark modes instantly. Preserves contrast and readability in both themes.
 
-## 🚀 Quick Start
+### 🔄 API Integration
+- Receives citizen reports in real-time (30s polling)
+- Sends alerts to citizen app instantly
+- Syncs zone status updates across both apps
+- RESTful API with JSON-Server backend
+
+## Technical Stack
+
+- **Framework:** React 18.2.0
+- **Build Tool:** Vite 5.4.21
+- **Styling:** Tailwind CSS 3.3.6
+- **Maps:** Leaflet 1.9.4 + React-Leaflet 4.2.1
+- **Charts:** Recharts 2.10.3
+- **Animations:** Framer Motion 10.16.16
+- **Icons:** Lucide React 0.294.0
+
+## Getting Started
 
 ### Prerequisites
-
-- Node.js 18+
+- Node.js 16+
 - npm or yarn
-- Git
+- Backend API running (see below)
 
-### 1. Clone the Repository
+### System Architecture
+
+This dashboard works with two other components:
+- **Backend API** (Port 3001): JSON-Server providing data
+- **Citizen App** (Port 5174): Mobile PWA for citizens
+
+### Installation & Setup
 
 ```bash
-git clone <your-repo-url>
-cd JolBondhu
-```
-
-### 2. Start Backend Server
-
-```bash
-cd backend
+# 1. Start Backend (in separate terminal)
+cd ../backend
 npm install
 npm start
-# Backend API: http://localhost:3001
-```
+# Backend: http://localhost:3001
 
-### 3. Start Dashboard (in new terminal)
-
-```bash
-cd JolBondhuDashBoard
+# 2. Start Dashboard
+cd ../JolBondhuDashBoard
 npm install
 npm run dev
 # Dashboard: http://localhost:5173
-```
 
-### 4. Start Citizen App (in new terminal)
-
-```bash
-cd JolBondhuApp
+# 3. (Optional) Start Citizen App
+cd ../JolBondhuApp
 npm install
 npm run dev
 # Citizen App: http://localhost:5174
 ```
 
-**All three services must run simultaneously for full functionality.**
+All three services must run simultaneously for full integration.
 
-## 📊 System Architecture
+### Build for Production
 
-### Data Flow
+```bash
+npm run build
+```
 
-1. **Citizen → Dashboard**: Reports submitted via Citizen App appear in Dashboard within 30 seconds
-2. **Dashboard → Citizen**: Alerts sent from Dashboard appear in Citizen App instantly
-3. **Real-time Updates**: All clients sync every 30 seconds for latest data
+Output goes to `dist/` folder.
+
+## Project Structure
+
+```
+NewMain/
+├── src/
+│   ├── App.jsx                    # Main app component, state management
+│   ├── main.jsx                   # React root render
+│   ├── index.css                  # Global styles, Tailwind imports
+│   ├── data/
+│   │   └── mockData.js           # 9 basins, 10 reports, translations
+│   └── components/
+│       ├── Sidebar.jsx           # Navigation sidebar
+│       ├── TopBar.jsx            # Header with language/dark mode
+│       ├── ZoneMap.jsx           # Leaflet polygon map
+│       ├── RiskStatusCard.jsx    # Zone risk display
+│       ├── RainfallChart.jsx     # 6-hour rainfall trends
+│       ├── ZoneList.jsx          # Zone selection list
+│       ├── CitizenFeed.jsx       # Zone-filtered reports
+│       └── ActionCenter.jsx      # Action buttons + modals
+├── index.html
+├── package.json
+├── tailwind.config.js
+└── vite.config.js
+```
+
+## API Integration
+
+### Backend API (JSON-Server)
+- **URL:** http://localhost:3001
+- **Type:** RESTful JSON API
+- **Features:** Real-time data, CORS enabled, auto-persist
 
 ### API Endpoints
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `GET /basins` | GET | Fetch all monitoring zones |
-| `GET /reports` | GET | Fetch citizen reports |
-| `POST /reports` | POST | Submit new report |
-| `GET /alerts` | GET | Fetch alerts |
-| `POST /alerts` | POST | Send alert to zone |
-| `PATCH /basins/:id` | PATCH | Update zone status |
+| Endpoint | Method | Purpose | Polling |
+|----------|--------|---------|---------|
+| `GET /basins` | GET | Fetch all 9 zones | 30s |
+| `GET /basins/{id}` | GET | Zone details | 30s |
+| `PATCH /basins/{id}` | PATCH | Update zone status | On action |
+| `GET /reports` | GET | All citizen reports | 30s |
+| `GET /reports?basinId={id}` | GET | Zone-specific reports | 30s |
+| `PATCH /reports/{id}` | PATCH | Update report status | On action |
+| `POST /alerts` | POST | Send alert to zone | On action |
+| `POST /broadcasts` | POST | Broadcast to all | On action |
 
-### Polling Intervals
+### Data Structure
 
-- **Weather Data**: 15 minutes (Tomorrow.io API)
-- **Basin/Zone Data**: 30 seconds
-- **Reports**: 30 seconds
-- **Alerts**: 30 seconds
-
-## 🛠️ Tech Stack
-
-### Frontend (Both Apps)
-- **React 18** - UI library
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Utility-first styling
-- **Leaflet** - Interactive maps
-- **Lucide React** - Icons
-- **Framer Motion** - Animations
-
-### Citizen App Only
-- **React Router DOM** - Navigation
-- **vite-plugin-pwa** - PWA capabilities
-- **IndexedDB** - Offline storage
-
-### Dashboard Only
-- **Recharts** - Data visualization
-
-### Backend
-- **JSON-Server** - Mock REST API
-- **CORS** - Cross-origin support
-
-## 📁 Project Structure
-
-```
-JolBondhu/
-├── JolBondhuDashBoard/          # Admin Dashboard
-│   ├── src/
-│   │   ├── components/          # React components
-│   │   ├── services/            # API services
-│   │   └── App.jsx             # Main application
-│   ├── package.json
-│   └── README.md               # Detailed docs
-│
-├── JolBondhuApp/               # Citizen PWA
-│   ├── src/
-│   │   ├── components/          # UI components
-│   │   ├── pages/              # 5 page components
-│   │   ├── hooks/              # Custom React hooks
-│   │   └── services/           # API services
-│   ├── package.json
-│   └── README.md               # Detailed docs
-│
-├── backend/                    # REST API
-│   ├── db.json                 # Database with 9 basins
-│   ├── package.json
-│   └── README.md               # Quick start guide
-│
-└── README.md                   # This file
+#### Basin Object
+```javascript
+{
+  id: "jalukbari",
+  name: "Jalukbari (Main)",
+  nameAssamese: "জালুকবাৰী (মুখ্য)",
+  location: "Guwahati, Kamrup",
+  riskLevel: "High", // High | Medium | Low
+  rainfall: 45.2,
+  riverLevel: "48.2",
+  drainageBlockage: 72,
+  estimatedWaterLevel: 2.5,
+  coords: [26.1445, 91.6616],
+  polygon: [[lat, lng], ...],
+  updatedAt: "2026-01-31T12:00:00Z"
+}
 ```
 
-## 🌐 Deployment
-
-### Production Architecture (AWS)
-
+#### Report Object (from Citizen App)
+```javascript
+{
+  id: "report_1234567890",
+  basinId: "jalukbari",
+  userName: "Rahul Das",
+  issueType: "waterlogging",
+  description: "Water rising near my house",
+  location: { lat: 26.1445, lng: 91.6616 },
+  photoData: "data:image/jpeg;base64,...",
+  timestamp: "2026-01-31T12:30:00Z",
+  status: "pending", // pending | under_review | action_taken | resolved
+  language: "en"
+}
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Citizen App   │────▶│  API Gateway     │────▶│  Lambda         │
-│   (S3 Static)   │     │  (HTTP/REST)     │     │  (Node.js)      │
-└─────────────────┘     └──────────────────┘     └────────┬────────┘
+
+## Current Status ✅
+
+### Phase 1-3: Complete
+- ✅ All 9 monitoring zones active with real-time updates
+- ✅ Interactive map with polygon selection
+- ✅ Zone-linked component updates (30s polling)
+- ✅ Real-time citizen report feed
+- ✅ Alert broadcasting to citizen app
+- ✅ Bilingual support (EN + অসমীয়া)
+- ✅ Dark mode toggle
+- ✅ Collapsible sidebar
+- ✅ 4 working action modals with API integration
+- ✅ Weather integration (Tomorrow.io + IMD RSS)
+- ✅ Water level calculations
+- ✅ **API fully integrated and operational**
+
+### Phase 4: Planned
+- 🔄 AWS Deployment (Lambda + API Gateway + DynamoDB)
+- 🔄 User Authentication (Admin login)
+- 🔄 Push Notifications (Firebase)
+- 🔄 Analytics Dashboard
+
+## Production Deployment
+
+### AWS Serverless Architecture
+```
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│   S3 (Static)   │      │  API Gateway     │      │  Lambda         │
+│   Dashboard     │◄────►│  + CloudFront    │◄────►│  Functions      │
+└─────────────────┘      └──────────────────┘      └────────┬────────┘
                                                            │
                                                 ┌──────────┴──────────┐
                                                 │     DynamoDB        │
                                                 │   (Zone + Reports)  │
                                                 └─────────────────────┘
-                                                           ▲
-┌─────────────────┐     ┌──────────────────┐              │
-│   Dashboard     │────▶│  CloudFront CDN  │──────────────┘
-│   (S3 Static)   │     │                  │
-└─────────────────┘     └──────────────────┘
 ```
 
-### Deployment Steps
+### Migration Steps
+1. Update `API_BASE_URL` in `src/services/apiService.js`
+2. Replace JSON-Server with AWS Lambda functions
+3. Migrate `db.json` to DynamoDB
+4. Deploy static files to S3
+5. Configure CloudFront CDN
 
-1. **Update API URLs** in both frontend apps
-2. **Replace JSON-Server** with AWS Lambda + API Gateway
-3. **Migrate db.json** to DynamoDB
-4. **Deploy static files** to S3
-5. **Configure CloudFront** for CDN
+## License
 
-See individual project READMEs for detailed deployment instructions.
-
-## 📝 API Documentation
-
-### Submit Report (Citizen App)
-
-```http
-POST /reports
-Content-Type: application/json
-
-{
-  "id": "report_${timestamp}",
-  "basinId": "jalukbari",
-  "userName": "Rahul Das",
-  "issueType": "waterlogging",
-  "description": "Water rising near my house",
-  "location": { "lat": 26.1445, "lng": 91.6616 },
-  "photoData": "data:image/jpeg;base64,...",
-  "timestamp": "2026-01-31T12:30:00Z",
-  "status": "pending"
-}
-```
-
-### Send Alert (Dashboard)
-
-```http
-POST /alerts
-Content-Type: application/json
-
-{
-  "id": "alert_${timestamp}",
-  "basinId": "jalukbari",
-  "type": "flood_warning",
-  "severity": "high",
-  "title": "Flood Warning - Jalukbari",
-  "titleAssamese": "বান সতৰ্কবাণী - জালুকবাৰী",
-  "message": "Water level rising rapidly...",
-  "messageAssamese": "পানীৰ স্তৰ বেগাই বাঢ়িছে...",
-  "issuedAt": "2026-01-31T12:00:00Z"
-}
-```
-
-## 🎓 Features by Component
-
-| Feature | Dashboard | Citizen App | Backend |
-|---------|-----------|-------------|---------|
-| **View Zones** | ✅ Interactive map | ✅ Map + List | ✅ 9 basins in db.json |
-| **Submit Reports** | ❌ N/A | ✅ With photo + GPS | ✅ POST /reports |
-| **View Reports** | ✅ Zone-filtered | ❌ N/A | ✅ GET /reports |
-| **Send Alerts** | ✅ Broadcast + Targeted | ❌ N/A | ✅ POST /alerts |
-| **Receive Alerts** | ❌ N/A | ✅ Real-time | ✅ GET /alerts |
-| **Risk Updates** | ✅ Real-time status | ✅ Weather cards | ✅ PATCH /basins |
-| **Offline Support** | ❌ N/A | ✅ Queue + sync | ❌ N/A |
-| **Weather Data** | ✅ Charts + Widget | ✅ Cards | ❌ N/A |
-| **Bilingual** | ✅ EN + অসমীয়া | ✅ EN + অসমীয়া | ✅ Both languages |
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **CORS errors**: Ensure backend is running on port 3001
-2. **API not connecting**: Check all three services are running
-3. **Photos not loading**: Verify base64 encoding in reports
-4. **Offline sync not working**: Clear localStorage and retry
-
-### Support
-
-For issues and questions:
-- Check individual project READMEs
-- Open an issue on GitHub
-- Review the [DOCUMENT.md](./DOCUMENT.md) for detailed documentation
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Built for **Guwahati Municipal Corporation** flood response
-- Supports **UN SDG 13**: Climate Action
-- Weather data provided by **Tomorrow.io**
-- Inspired by real-world flood management needs in Assam
+Private project for demonstration purposes.
 
 ---
 
-**Version**: 2.0  
-**Status**: ✅ Production Ready - Fully Integrated  
-**Last Updated**: January 31, 2026  
-**System Status**: Dashboard ↔ API ↔ Citizen App (100% Connected)
-
-## 📞 Quick Links
-
-- [📊 Dashboard README](./JolBondhuDashBoard/README.md)
-- [📱 Citizen App README](./JolBondhuApp/README.md)
-- [⚙️ Backend README](./backend/README.md)
-- [📚 Full Documentation](./DOCUMENT.md)
+**Built for:** Guwahati Flood Monitoring  
+**Status:** Production Ready | API Fully Integrated  
+**System:** Dashboard ↔ API ↔ Citizen App  
+**Last Updated:** January 31, 2026
