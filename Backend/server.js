@@ -1,5 +1,6 @@
 const jsonServer = require('json-server');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const { broadcastNotifications } = require('./services/twilioService');
@@ -9,6 +10,92 @@ const router = jsonServer.router(path.join(__dirname, 'db.json'));
 const middlewares = jsonServer.defaults();
 
 const PORT = process.env.PORT || 3001;
+const REPORT_LIMIT = 10;
+const BACKUP_FILE = path.join(__dirname, 'report_backup.json');
+
+// Automated cleanup function for old reports
+const cleanupOldReports = async () => {
+    try {
+        const db = router.db;
+        const reports = db.get('reports').value() || [];
+
+        if (reports.length > REPORT_LIMIT) {
+            // Sort by timestamp (oldest first)
+            const sortedReports = reports.sort((a, b) =>
+                new Date(a.timestamp) - new Date(b.timestamp)
+            );
+
+            // Get reports to archive (oldest 5, keeping only latest 10)
+            const reportsToArchive = sortedReports.slice(0, reports.length - REPORT_LIMIT);
+            const reportsToKeep = sortedReports.slice(reports.length - REPORT_LIMIT);
+
+            // Archive to backup file
+            let backupData = { reports: [] };
+            try {
+                if (fs.existsSync(BACKUP_FILE)) {
+                    const backupContent = fs.readFileSync(BACKUP_FILE, 'utf8');
+                    backupData = JSON.parse(backupContent);
+                }
+            } catch (e) {
+                // Backup file doesn't exist yet, start fresh
+            }
+
+            backupData.reports = [...backupData.reports, ...reportsToArchive];
+
+            // Add archive metadata
+            backupData.lastArchiveDate = new Date().toISOString();
+            backupData.archivedCount = reportsToArchive.length;
+
+            fs.writeFileSync(BACKUP_FILE, JSON.stringify(backupData, null, 2));
+
+            // Update main DB with only reports to keep
+            db.set('reports', reportsToKeep).write();
+
+            console.log(`[Cleanup] Archived ${reportsToArchive.length} old reports, kept latest ${REPORT_LIMIT}`);
+        }
+    } catch (error) {
+        console.error('[Cleanup] Error:', error.message);
+    }
+};
+
+// Initialize reports with reward fields if missing
+const initializeReports = () => {
+    try {
+        const db = router.db;
+        const reports = db.get('reports').value() || [];
+
+        const rewardFields = {
+            rewardAmount: null,
+            rewardStatus: 'pending',
+            rewardReason: '',
+            upiId: '',
+            verifiers: [],
+            incidentId: '',
+            approvedAt: null,
+            rejectedAt: null,
+            disbursedAt: null
+        };
+
+        let updated = false;
+        const updatedReports = reports.map(report => {
+            if (!report.hasOwnProperty('rewardStatus')) {
+                updated = true;
+                return { ...report, ...rewardFields };
+            }
+            return report;
+        });
+
+        if (updated) {
+            db.set('reports', updatedReports).write();
+            console.log('[Init] Added reward fields to existing reports');
+        }
+    } catch (error) {
+        console.error('[Init] Error:', error.message);
+    }
+};
+
+// Run initialization on startup
+initializeReports();
 
 server.use(middlewares);
 
@@ -69,13 +156,13 @@ router.render = (req, res) => {
                 if (req.path === '/reports' && req.method === 'POST') {
                     const basins = db.get('basins').value() || [];
                     const basin = basins.find(b => b.id === req.body.basinId);
-                    
-                    const locationText = basin 
-                        ? basin.name 
-                        : (req.body.location 
-                            ? `${req.body.location.lat.toFixed(4)}, ${req.body.location.lng.toFixed(4)}` 
+
+                    const locationText = basin
+                        ? basin.name
+                        : (req.body.location
+                            ? `${req.body.location.lat.toFixed(4)}, ${req.body.location.lng.toFixed(4)}`
                             : 'Unknown');
-                    
+
                     const message = `JolBondhu CITIZEN REPORT
 
 Issue: ${req.body.issueType || 'Unknown Issue'}
@@ -88,6 +175,9 @@ Check the app for more information.`;
 
                     console.log(`Notifying ${phoneNumbers.length} users about new citizen report via WhatsApp...`);
                     broadcastNotifications(phoneNumbers, message);
+
+                    // Trigger automated cleanup after new report
+                    cleanupOldReports();
                 }
             }
         } catch (error) {
