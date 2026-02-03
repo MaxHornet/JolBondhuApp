@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import OpenMeteoService from '../services/openMeteoService';
+import WeatherAdapter from '../services/weatherAdapter';
 import WeatherService from '../services/weatherService';
 import WaterLevelService from '../services/waterLevelService';
 
@@ -23,8 +25,21 @@ const UPDATE_INTERVALS = {
 
 // Default fallback data
 const getDefaultWeatherData = (zoneId) => ({
-  current: WeatherService.getFallbackWeather(zoneId),
-  forecast: WeatherService.generateFallbackForecast(6),
+  current: {
+    temperature: 28,
+    feelsLike: 32,
+    humidity: 70,
+    windSpeed: 3,
+    visibility: 10,
+    weatherCode: 3,
+    rainIntensity: 0,
+    precipitation: 0,
+    precipitationProbability: 0,
+    maxTemp: 32,
+    minTemp: 24,
+    isDay: true
+  },
+  forecast: [],
   warnings: [],
   zoneId,
   riskLevel: 'low',
@@ -50,7 +65,7 @@ const getDefaultWaterLevel = (zoneId) => ({
 });
 
 export const useWeather = (zoneId = 'jalukbari', options = {}) => {
-  const { 
+  const {
     enableAutoUpdate = true,
     onError = null,
     onUpdate = null
@@ -70,7 +85,7 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
     }
     return getDefaultWeatherData(zoneId);
   });
-  
+
   const [waterLevelData, setWaterLevelData] = useState(() => {
     try {
       const cached = localStorage.getItem(`weather_${zoneId}`);
@@ -83,7 +98,7 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
     }
     return getDefaultWaterLevel(zoneId);
   });
-  
+
   const [zoneRisks, setZoneRisks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -99,7 +114,7 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
     }
     return new Date();
   });
-  
+
   const [isOffline, setIsOffline] = useState(() => {
     try {
       return !navigator.onLine;
@@ -118,13 +133,26 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
   const fetchWeather = useCallback(async (silent = false) => {
     if (!isMountedRef.current) return;
     if (!silent) setLoading(true);
-    
+
     try {
-      // Fetch unified weather data
-      const weather = await WeatherService.getUnifiedWeather(zoneId);
-      
+      // Use Guwahati coordinates (default)
+      const lat = 26.1844;
+      const lng = 91.7458;
+
+      // Fetch from Open-Meteo API
+      const [currentWeather, hourlyForecast] = await Promise.all([
+        OpenMeteoService.getCurrentWeather(lat, lng),
+        OpenMeteoService.getHourlyForecast(lat, lng)
+      ]);
+
+      // Adapt Open-Meteo format to unified format
+      const weather = WeatherAdapter.adaptOpenMeteoToUnified(
+        currentWeather,
+        hourlyForecast
+      );
+
       if (!isMountedRef.current) return;
-      
+
       // Calculate zone risks with error handling
       let risks = [];
       try {
@@ -133,7 +161,7 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
         console.warn('Error calculating zone risks:', riskError);
         risks = [];
       }
-      
+
       // Get water level for current zone
       let waterLevel;
       try {
@@ -171,11 +199,11 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
       }
     } catch (err) {
       console.error('Weather fetch error:', err);
-      
+
       if (!isMountedRef.current) return;
-      
+
       setError(err.message || 'Failed to fetch weather data');
-      
+
       // Data is already set from localStorage or defaults, so no need to update
       // Just log that we're using fallback/cached data
       console.log('Using cached or fallback weather data');
@@ -200,7 +228,7 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
   const fetchWarnings = useCallback(async () => {
     try {
       const warnings = await WeatherService.getIMDWarnings();
-      
+
       if (isMountedRef.current && weatherData) {
         setWeatherData(prev => ({
           ...prev,
@@ -240,7 +268,7 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
    */
   const getActiveAlerts = useCallback(() => {
     if (!weatherData?.warnings || !Array.isArray(weatherData.warnings)) return [];
-    
+
     try {
       const now = new Date();
       return weatherData.warnings.filter(warning => {
@@ -272,7 +300,7 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
     const timer = setTimeout(() => {
       fetchWeather();
     }, 100);
-    
+
     return () => clearTimeout(timer);
   }, [fetchWeather, zoneId]);
 
@@ -324,21 +352,21 @@ export const useWeather = (zoneId = 'jalukbari', options = {}) => {
     weather: weatherData || getDefaultWeatherData(zoneId),
     waterLevel: waterLevelData || getDefaultWaterLevel(zoneId),
     zoneRisks: zoneRisks || [],
-    
+
     // Status
     loading,
     error,
     lastUpdated,
     isOffline,
-    
+
     // Actions
     refresh,
-    
+
     // Helpers
     getCurrentIcon,
     getCurrentTemp,
     getActiveAlerts,
-    
+
     // Raw values for convenience - with safe defaults
     current: weatherData?.current || getDefaultWeatherData(zoneId).current,
     forecast: weatherData?.forecast || getDefaultWeatherData(zoneId).forecast,

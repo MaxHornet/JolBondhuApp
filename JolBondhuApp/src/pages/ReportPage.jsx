@@ -34,7 +34,83 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
     const [gettingLocation, setGettingLocation] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitStatus, setSubmitStatus] = useState(null) // 'success' | 'queued' | null
-    
+
+    // Manual location states
+    const [useManualLocation, setUseManualLocation] = useState(false)
+    const [locationSearch, setLocationSearch] = useState('')
+    const [searchResults, setSearchResults] = useState([])
+    const [isSearching, setIsSearching] = useState(false)
+
+    // Handle searching location by name
+    const handleLocationSearch = async () => {
+        if (!locationSearch.trim()) return;
+
+        console.log('Searching for:', locationSearch);
+        setIsSearching(true);
+
+        try {
+            // Searching for the name within Guwahati/Assam context for better accuracy
+            const query = encodeURIComponent(locationSearch + ', Guwahati, Assam');
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5`;
+
+            console.log('Fetching from:', url);
+
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'JolBondhuApp/1.0' // Nominatim requires a User-Agent
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Search results:', data);
+
+            if (data && data.length > 0) {
+                setSearchResults(data);
+            } else {
+                console.warn('No results found for:', locationSearch);
+                alert(language === 'as'
+                    ? 'কোনো ফলাফল পোৱা নগল। অনুগ্রহ কৰি অন্য নাম চেষ্টা কৰক।'
+                    : 'No results found. Please try a different name.');
+                setSearchResults([]);
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            alert(language === 'as'
+                ? 'সন্ধান বিফল হল। অনুগ্রহ কৰি পুনৰ চেষ্টা কৰক।'
+                : 'Search failed. Please try again.');
+            setSearchResults([]);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const selectSearchedLocation = (result) => {
+        setLocation({
+            lat: parseFloat(result.lat),
+            lng: parseFloat(result.lon),
+            accuracy: 0,
+            manual: true,
+            name: result.display_name
+        });
+        setSearchResults([]);
+        setLocationSearch(result.display_name.split(',')[0]); // Set search field to the short name
+    };
+
+    const selectBasinLocation = (basin) => {
+        setLocation({
+            lat: basin.coords[0],
+            lng: basin.coords[1],
+            accuracy: 0,
+            manual: true,
+            name: basin.name
+        });
+        setUseManualLocation(false); // Close manual selection once area is picked
+    };
+
     // Name prompt states
     const [userName, setUserName] = useState('')
     const [showNamePrompt, setShowNamePrompt] = useState(false)
@@ -46,7 +122,7 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
     const [audioBlob, setAudioBlob] = useState(null)
     const [isPlaying, setIsPlaying] = useState(false)
     const [audioUrl, setAudioUrl] = useState(null)
-    
+
     const mediaRecorderRef = useRef(null)
     const audioChunksRef = useRef([])
     const timerRef = useRef(null)
@@ -146,7 +222,7 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
             mediaRecorder.onstop = () => {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
                 setAudioBlob(audioBlob)
-                
+
                 // Convert to base64 for storage
                 const reader = new FileReader()
                 reader.onloadend = () => {
@@ -169,8 +245,8 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
             }, 1000)
         } catch (error) {
             console.error('Error starting recording:', error)
-            alert(language === 'as' 
-                ? 'মাইক্ৰ’ফোন এক্সেছ কৰিবলৈ অনুমতি দিয়ক' 
+            alert(language === 'as'
+                ? 'মাইক্ৰ’ফোন এক্সেছ কৰিবলৈ অনুমতি দিয়ক'
                 : 'Please allow microphone access to record')
         }
     }
@@ -297,10 +373,10 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
             // Find closest basin by distance
             let closest = basinList[0]
             let minDist = Infinity
-            
+
             basinList.forEach(basin => {
                 const dist = Math.sqrt(
-                    Math.pow(loc.lat - basin.coords[0], 2) + 
+                    Math.pow(loc.lat - basin.coords[0], 2) +
                     Math.pow(loc.lng - basin.coords[1], 2)
                 )
                 if (dist < minDist) {
@@ -308,10 +384,36 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                     closest = basin
                 }
             })
-            
+
             return closest.id
         }
         return 'unknown'
+    }
+
+    // Toggle between GPS and manual location
+    const toggleLocationMode = () => {
+        setUseManualLocation(!useManualLocation)
+        if (!useManualLocation) {
+            // Switching back to GPS
+            setGettingLocation(true)
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        setLocation({
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        })
+                        setGettingLocation(false)
+                    },
+                    (error) => {
+                        console.error('Error getting location:', error)
+                        setGettingLocation(false)
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                )
+            }
+        }
     }
 
     // Success/Queued overlay
@@ -377,10 +479,10 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                                     type="button"
                                     onClick={() => setIssueType(type.id)}
                                     className={`p-3 rounded-xl flex items-center gap-2 transition-all ${isSelected
-                                            ? 'bg-primary-500 text-white'
-                                            : darkMode
-                                                ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        ? 'bg-primary-500 text-white'
+                                        : darkMode
+                                            ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                         }`}
                                 >
                                     <Icon className="w-5 h-5" />
@@ -393,24 +495,7 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                     </div>
                 </div>
 
-                {/* Description */}
-                <div>
-                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                        {t.description}
-                    </label>
-                    <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder={t.descriptionPlaceholder}
-                        rows={4}
-                        className={`w-full px-4 py-3 rounded-xl border transition-all focus:ring-2 focus:ring-primary-500 focus:border-transparent ${darkMode
-                                ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500'
-                                : 'bg-white border-gray-200 text-gray-800 placeholder:text-gray-400'
-                            }`}
-                    />
-                </div>
-
-                {/* Voice Recording */}
+                {/* Voice Recording - MOVED ABOVE Description */}
                 <div>
                     <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                         {language === 'as' ? 'কণ্ঠ বাৰ্তা (বিকল্প)' : 'Voice Message (Optional)'}
@@ -485,8 +570,8 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                             type="button"
                             onClick={startRecording}
                             className={`w-full p-4 rounded-xl border-2 border-dashed flex items-center gap-3 transition-colors ${darkMode
-                                    ? 'border-slate-700 hover:border-slate-600 text-slate-400'
-                                    : 'border-gray-300 hover:border-gray-400 text-gray-500'
+                                ? 'border-slate-700 hover:border-slate-600 text-slate-400'
+                                : 'border-gray-300 hover:border-gray-400 text-gray-500'
                                 }`}
                         >
                             <div className={`w-12 h-12 rounded-full flex items-center justify-center ${darkMode ? 'bg-slate-700' : 'bg-gray-100'}`}>
@@ -502,6 +587,23 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                             </div>
                         </button>
                     )}
+                </div>
+
+                {/* Description - MOVED BELOW Voice Message */}
+                <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                        {t.description}
+                    </label>
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder={t.descriptionPlaceholder}
+                        rows={4}
+                        className={`w-full px-4 py-3 rounded-xl border transition-all focus:ring-2 focus:ring-primary-500 focus:border-transparent ${darkMode
+                            ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500'
+                            : 'bg-white border-gray-200 text-gray-800 placeholder:text-gray-400'
+                            }`}
+                    />
                 </div>
 
                 {/* Photo Upload */}
@@ -530,8 +632,8 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             className={`w-full p-8 rounded-xl border-2 border-dashed flex flex-col items-center gap-2 transition-colors ${darkMode
-                                    ? 'border-slate-700 hover:border-slate-600 text-slate-400'
-                                    : 'border-gray-300 hover:border-gray-400 text-gray-500'
+                                ? 'border-slate-700 hover:border-slate-600 text-slate-400'
+                                : 'border-gray-300 hover:border-gray-400 text-gray-500'
                                 }`}
                         >
                             <Camera className="w-8 h-8" />
@@ -551,36 +653,155 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
 
                 {/* Location */}
                 <div>
-                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                        {t.yourLocation}
-                    </label>
-                    <div className={`p-3 rounded-xl flex items-center gap-3 ${darkMode ? 'bg-slate-800' : 'bg-gray-100'
-                        }`}>
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${location ? 'bg-green-500/20' : 'bg-slate-700'
-                            }`}>
-                            <MapPin className={`w-5 h-5 ${location ? 'text-green-500' : 'text-slate-400'}`} />
-                        </div>
-                        <div className="flex-1">
-                            {gettingLocation ? (
-                                <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                    {t.gettingLocation}
+                    <div className="flex items-center justify-between mb-2">
+                        <label className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                            {t.yourLocation}
+                        </label>
+                        <button
+                            type="button"
+                            onClick={toggleLocationMode}
+                            className={`text-xs px-3 py-1 rounded-full transition-colors ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                        >
+                            {useManualLocation
+                                ? (language === 'as' ? 'GPS ব্যৱহাৰ কৰক' : 'Use GPS')
+                                : (language === 'as' ? 'স্থানৰ নাম সন্ধান কৰক' : 'Search by Name')
+                            }
+                        </button>
+                    </div>
+
+                    {useManualLocation ? (
+                        /* Manual Location Selection Interface */
+                        <div className="space-y-4">
+                            {/* Option 1: Quick Basin Select */}
+                            <div>
+                                <p className={`text-xs font-medium mb-2 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                    {language === 'as' ? 'সচৰাচৰ ব্যৱহৃত অঞ্চলসমূহ:' : 'Quick Select Monitored Areas:'}
                                 </p>
-                            ) : location ? (
-                                <>
-                                    <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                                        {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                                    </p>
-                                    <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                        Accuracy: ±{Math.round(location.accuracy)}m
-                                    </p>
-                                </>
-                            ) : (
-                                <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                                    {language === 'as' ? 'অৱস্থান উপলব্ধ নহয়' : 'Location not available'}
+                                <div className="flex flex-wrap gap-2">
+                                    {basins && basins.map(basin => (
+                                        <button
+                                            key={basin.id}
+                                            type="button"
+                                            onClick={() => selectBasinLocation(basin)}
+                                            className={`text-[10px] px-2 py-1.5 rounded-lg border flex items-center gap-1 transition-all ${location && location.name === basin.name
+                                                ? 'bg-blue-500 border-blue-500 text-white'
+                                                : darkMode
+                                                    ? 'bg-slate-800 border-slate-700 text-slate-400'
+                                                    : 'bg-white border-gray-200 text-gray-600'
+                                                }`}
+                                        >
+                                            <MapPin className="w-3 h-3" />
+                                            {language === 'as' ? (basin.nameAssamese || basin.name) : basin.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Option 2: Search by Name */}
+                            <div className="relative">
+                                <p className={`text-xs font-medium mb-2 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                    {language === 'as' ? 'বা কোনো ঠাইৰ নাম সন্ধান কৰক:' : 'Or search for any place name:'}
                                 </p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={locationSearch}
+                                        onChange={(e) => setLocationSearch(e.target.value)}
+                                        placeholder={language === 'as' ? 'ঠাইৰ নাম (যেনে: জালুকবাৰী)' : 'Place name (e.g. Jalukbari)'}
+                                        className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 focus:ring-blue-500 ${darkMode
+                                            ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500'
+                                            : 'bg-white border-gray-200 text-gray-800 placeholder:text-gray-400'
+                                            }`}
+                                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleLocationSearch())}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleLocationSearch}
+                                        disabled={isSearching || !locationSearch.trim()}
+                                        className={`px-4 py-2 rounded-lg text-white font-medium transition-all ${isSearching || !locationSearch.trim()
+                                            ? 'bg-blue-500/50 cursor-not-allowed'
+                                            : 'bg-blue-500 hover:bg-blue-600 active:scale-95'
+                                            }`}
+                                    >
+                                        {isSearching ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : (language === 'as' ? 'সন্ধান' : 'Search')}
+                                    </button>
+                                </div>
+
+                                {/* Search Results Dropdown */}
+                                <AnimatePresence>
+                                    {searchResults.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            className={`absolute z-10 w-full mt-1 border rounded-lg shadow-xl overflow-hidden ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+                                                }`}
+                                        >
+                                            {searchResults.map((result, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onClick={() => selectSearchedLocation(result)}
+                                                    className={`w-full text-left px-3 py-2 text-xs border-b last:border-0 transition-colors ${darkMode
+                                                        ? 'border-slate-700 hover:bg-slate-700 text-slate-300'
+                                                        : 'border-gray-100 hover:bg-gray-50 text-gray-700'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-start gap-2">
+                                                        <MapPin className="w-3 h-3 mt-0.5 text-blue-500" />
+                                                        <span>{result.display_name}</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            {location && location.manual && (
+                                <div className={`p-3 rounded-xl flex items-center justify-between ${darkMode ? 'bg-green-500/20' : 'bg-green-50'}`}>
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                        <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                        <span className={`text-xs font-medium truncate ${darkMode ? 'text-green-400' : 'text-green-700'}`}>
+                                            {location.name}
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                                        {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                                    </span>
+                                </div>
                             )}
                         </div>
-                    </div>
+                    ) : (
+                        /* GPS Location Display */
+                        <div className={`p-3 rounded-xl flex items-center gap-3 ${darkMode ? 'bg-slate-800' : 'bg-gray-100'}`}>
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${location ? 'bg-green-500/20' : 'bg-slate-700'
+                                }`}>
+                                <MapPin className={`w-5 h-5 ${location ? 'text-green-500' : 'text-slate-400'}`} />
+                            </div>
+                            <div className="flex-1">
+                                {gettingLocation ? (
+                                    <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                        {t.gettingLocation}
+                                    </p>
+                                ) : location ? (
+                                    <>
+                                        <p className={`text-sm font-medium truncate max-w-[200px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                            {location.name || (location.lat.toFixed(6) + ', ' + location.lng.toFixed(6))}
+                                        </p>
+                                        <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                            {location.accuracy ? `Accuracy: ±${Math.round(location.accuracy)}m` : 'Locally selected'}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                        {language === 'as' ? 'অৱস্থান উপলব্ধ নহয়' : 'Location not available'}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Offline Indicator */}
@@ -597,8 +818,8 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                     disabled={!issueType || !description || isSubmitting}
                     whileTap={{ scale: 0.98 }}
                     className={`w-full py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${!issueType || !description || isSubmitting
-                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                            : 'bg-primary-500 hover:bg-primary-600 text-white'
+                        ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                        : 'bg-primary-500 hover:bg-primary-600 text-white'
                         }`}
                 >
                     {isSubmitting ? (
@@ -638,8 +859,8 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                                     {language === 'as' ? 'আপোনাৰ নাম দিয়ক' : 'Enter Your Name'}
                                 </h3>
                                 <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>
-                                    {language === 'as' 
-                                        ? 'আপোনাৰ প্ৰতিবেদন আৰু ব্যৱহাৰকাৰীৰ অভিজ্ঞতা উন্নত কৰিবলৈ' 
+                                    {language === 'as'
+                                        ? 'আপোনাৰ প্ৰতিবেদন আৰু ব্যৱহাৰকাৰীৰ অভিজ্ঞতা উন্নত কৰিবলৈ'
                                         : 'To improve your reporting and user experience'}
                                 </p>
                             </div>
@@ -652,8 +873,8 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                                         onChange={(e) => setTempName(e.target.value)}
                                         placeholder={language === 'as' ? 'আপোনাৰ নাম' : 'Your Name'}
                                         className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-2 focus:ring-primary-500 focus:border-transparent ${darkMode
-                                                ? 'bg-slate-700 border-slate-600 text-white placeholder:text-slate-500'
-                                                : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
+                                            ? 'bg-slate-700 border-slate-600 text-white placeholder:text-slate-500'
+                                            : 'bg-gray-50 border-gray-200 text-gray-800 placeholder:text-gray-400'
                                             }`}
                                         onKeyPress={(e) => {
                                             if (e.key === 'Enter' && tempName.trim()) {
@@ -666,7 +887,7 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                                 <div className={`flex items-start gap-2 p-3 rounded-lg ${darkMode ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
                                     <Shield className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
                                     <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>
-                                        {language === 'as' 
+                                        {language === 'as'
                                             ? 'আপোনাৰ নাম স্থানীয়ভাৱে সংৰক্ষিত হৈ থাকিব আৰু কেৱল প্ৰতিবেদনৰ সৈতে পঠিওৱা হব। কোনো একাউণ্ট প্ৰয়োজন নহয়।'
                                             : 'Your name will be stored locally and only sent with reports. No account required.'}
                                     </p>
@@ -679,11 +900,11 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                                             setShowNamePrompt(false)
                                             setTempName('')
                                             // Continue with anonymous submission
-                                            handleSubmit({ preventDefault: () => {}, skipNameCheck: true })
+                                            handleSubmit({ preventDefault: () => { }, skipNameCheck: true })
                                         }}
                                         className={`flex-1 py-3 rounded-xl font-medium transition-all ${darkMode
-                                                ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                            ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                             }`}
                                     >
                                         {language === 'as' ? 'বাদ দিয়ক' : 'Skip'}
@@ -693,8 +914,8 @@ function ReportPage({ basins, isOnline, onSubmit, darkMode, language, t }) {
                                         onClick={() => handleSaveName(tempName)}
                                         disabled={!tempName.trim()}
                                         className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${!tempName.trim()
-                                                ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                                                : 'bg-primary-500 hover:bg-primary-600 text-white'
+                                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                                            : 'bg-primary-500 hover:bg-primary-600 text-white'
                                             }`}
                                     >
                                         {language === 'as' ? 'সঞ্চয় কৰক' : 'Save'}

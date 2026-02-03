@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Cloud, 
-  CloudRain, 
-  Sun, 
-  Wind, 
-  Droplets, 
-  Eye,
+import {
+  Cloud,
+  CloudRain,
+  Sun,
+  Droplets,
   Gauge,
   AlertTriangle,
   RefreshCw,
   MapPin,
-  CloudLightning
+  CloudLightning,
+  Thermometer,
+  Umbrella
 } from 'lucide-react';
 
 /**
@@ -28,30 +28,30 @@ const WeatherIcon = ({ code, className = "w-6 h-6" }) => {
   // Map weather codes to icons
   const getIcon = () => {
     if (!code) return Cloud;
-    
+
     // Thunderstorm
     if (code === 8000) return CloudLightning;
-    
+
     // Rain/Freezing Rain
-    if ([4000, 4001, 4200, 4201, 6000, 6001, 6200, 6201].includes(code)) 
+    if ([4000, 4001, 4200, 4201, 6000, 6001, 6200, 6201].includes(code))
       return CloudRain;
-    
+
     // Fog - use Cloud as alternative since Fog icon not available
-    if ([2000, 2100].includes(code)) 
+    if ([2000, 2100].includes(code))
       return Cloud;
-    
+
     // Clear/Sunny
-    if (code === 1000) 
+    if (code === 1000)
       return Sun;
-    
+
     // Partly cloudy
-    if ([1100, 1101].includes(code)) 
+    if ([1100, 1101].includes(code))
       return Cloud;
-    
+
     // Cloudy
-    if ([1001, 1102].includes(code)) 
+    if ([1001, 1102].includes(code))
       return Cloud;
-    
+
     return Cloud;
   };
 
@@ -59,12 +59,12 @@ const WeatherIcon = ({ code, className = "w-6 h-6" }) => {
   return <Icon className={className} />;
 };
 
-const WeatherCard = ({ 
-  weather, 
-  waterLevel, 
-  zoneId, 
-  loading, 
-  lastUpdated, 
+const WeatherCard = ({
+  weather,
+  waterLevel,
+  zoneId,
+  loading,
+  lastUpdated,
   isOffline,
   onRefresh,
   language = 'en',
@@ -87,7 +87,7 @@ const WeatherCard = ({
     weatherCode: 1001,
     rainIntensity: 0
   };
-  
+
   const forecast = Array.isArray(safeWeather.forecast) ? safeWeather.forecast : [];
   const alerts = Array.isArray(safeWeather.warnings) ? safeWeather.warnings : [];
   const riskLevel = safeWeather.riskLevel || 'low';
@@ -104,6 +104,10 @@ const WeatherCard = ({
         wind: 'Wind',
         visibility: 'Visibility',
         pressure: 'Pressure',
+        rainChance: 'Rain Chance',
+        rainAmount: 'Rainfall',
+        maxTemp: 'Max Temp',
+        minTemp: 'Min Temp',
         updated: 'Updated',
         offline: 'Offline mode',
         refresh: 'Refresh',
@@ -124,6 +128,10 @@ const WeatherCard = ({
         wind: 'বতাহ',
         visibility: 'দৃশ্যমানতা',
         pressure: 'চাপ',
+        rainChance: 'বৰষুণৰ সম্ভাৱনা',
+        rainAmount: 'বৰষুণ',
+        maxTemp: 'সৰ্বোচ্চ তাপ',
+        minTemp: 'সৰ্বনিম্ন তাপ',
         updated: 'আপডেট কৰা হৈছে',
         offline: 'অফলাইন মোড',
         refresh: 'ৰিফ্ৰেছ কৰক',
@@ -244,41 +252,14 @@ const WeatherCard = ({
               </div>
             </div>
           </div>
-          
+
           {/* Risk Badge */}
           <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${getRiskColor(riskLevel)}`}>
             {getText(`${riskLevel}Risk`)}
           </div>
         </div>
 
-        {/* Weather Details Grid */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className={`p-3 rounded-xl ${darkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
-            <Droplets className="w-4 h-4 text-blue-500 mb-1" />
-            <div className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              {formatNumber(current.humidity)}%
-            </div>
-            <div className="text-xs text-gray-500">{getText('humidity')}</div>
-          </div>
-          
-          <div className={`p-3 rounded-xl ${darkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
-            <Wind className="w-4 h-4 text-teal-500 mb-1" />
-            <div className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              {formatNumber((current.windSpeed || 0) * 3.6)} km/h
-            </div>
-            <div className="text-xs text-gray-500">{getText('wind')}</div>
-          </div>
-          
-          <div className={`p-3 rounded-xl ${darkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
-            <Eye className="w-4 h-4 text-amber-500 mb-1" />
-            <div className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-              {formatNumber(current.visibility || 5)} km
-            </div>
-            <div className="text-xs text-gray-500">{getText('visibility')}</div>
-          </div>
-        </div>
-
-        {/* Water Level Status */}
+        {/* Water Level Status - MOVED ABOVE Weather Details */}
         {safeWaterLevel.currentLevel && (
           <div className={`p-3 rounded-xl mb-4 border ${darkMode ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
             <div className="flex items-center justify-between mb-2">
@@ -289,7 +270,7 @@ const WeatherCard = ({
                 </span>
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full ${getRiskColor(safeWaterLevel.status || 'low')}`}>
-                {language === 'as' 
+                {language === 'as'
                   ? (safeWaterLevel.statusAssamese || 'স্বাভাৱিক')
                   : (safeWaterLevel.status || 'Normal')
                 }
@@ -306,19 +287,48 @@ const WeatherCard = ({
           </div>
         )}
 
+        {/* Weather Details Grid - Updated to show precipitation data */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {/* Rain Chance */}
+          <div className={`p-3 rounded-xl ${darkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
+            <Umbrella className="w-4 h-4 text-blue-500 mb-1" />
+            <div className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              {formatNumber(current.precipitationProbability || current.rainProbability || 0)}%
+            </div>
+            <div className="text-xs text-gray-500">{getText('rainChance')}</div>
+          </div>
+
+          {/* Rain Amount */}
+          <div className={`p-3 rounded-xl ${darkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
+            <CloudRain className="w-4 h-4 text-teal-500 mb-1" />
+            <div className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              {formatNumber(current.precipitation || current.rainIntensity || 0, 1)} mm
+            </div>
+            <div className="text-xs text-gray-500">{getText('rainAmount')}</div>
+          </div>
+
+          {/* Max/Min Temp */}
+          <div className={`p-3 rounded-xl ${darkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
+            <Thermometer className="w-4 h-4 text-amber-500 mb-1" />
+            <div className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              {formatTemp(current.maxTemp || current.temperature + 3)}°/{formatTemp(current.minTemp || current.temperature - 5)}°
+            </div>
+            <div className="text-xs text-gray-500">{getText('maxTemp')}/{getText('minTemp')}</div>
+          </div>
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-2 mb-4">
           {['current', 'forecast', 'alerts'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-1.5 text-xs rounded-full transition-all ${
-                activeTab === tab
-                  ? 'bg-blue-500 text-white'
-                  : darkMode
-                    ? 'bg-slate-700 text-gray-300'
-                    : 'bg-gray-100 text-gray-600'
-              }`}
+              className={`px-3 py-1.5 text-xs rounded-full transition-all ${activeTab === tab
+                ? 'bg-blue-500 text-white'
+                : darkMode
+                  ? 'bg-slate-700 text-gray-300'
+                  : 'bg-gray-100 text-gray-600'
+                }`}
             >
               {getText(tab)}
               {tab === 'alerts' && alerts.length > 0 && (
@@ -340,12 +350,12 @@ const WeatherCard = ({
               className="space-y-2"
             >
               {forecast.slice(0, 6).map((hour, idx) => (
-                <div 
+                <div
                   key={idx}
                   className={`flex items-center justify-between p-2 rounded-lg ${darkMode ? 'bg-slate-700/50' : 'bg-gray-50'}`}
                 >
                   <span className="text-xs text-gray-500">
-                    {hour.time 
+                    {hour.time
                       ? new Date(hour.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
                       : '--:--'
                     }
@@ -380,18 +390,16 @@ const WeatherCard = ({
                 </div>
               ) : (
                 alerts.slice(0, 3).map((alert, idx) => (
-                  <div 
+                  <div
                     key={idx}
-                    className={`p-3 rounded-lg border-l-4 ${
-                      alert.severity === 'high' 
-                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
-                        : 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-                    }`}
+                    className={`p-3 rounded-lg border-l-4 ${alert.severity === 'high'
+                      ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                      : 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                      }`}
                   >
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${
-                        alert.severity === 'high' ? 'text-red-500' : 'text-amber-500'
-                      }`} />
+                      <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${alert.severity === 'high' ? 'text-red-500' : 'text-amber-500'
+                        }`} />
                       <div>
                         <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                           {alert.district || 'Alert'}

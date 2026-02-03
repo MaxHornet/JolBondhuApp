@@ -89,7 +89,7 @@ function SafetyPage({ basins, darkMode, language, t }) {
             >
                 {/* Pulsing background effect */}
                 <div className="absolute inset-0 bg-red-600 animate-pulse opacity-20"></div>
-                
+
                 <div className="relative">
                     {/* Header */}
                     <div className="flex items-center gap-3 mb-4">
@@ -159,7 +159,73 @@ function SafetyPage({ basins, darkMode, language, t }) {
                 </div>
             </motion.div>
 
-            {/* Safety Guidelines */}
+            {/* Emergency Contacts - MOVED UP */}
+            <motion.div variants={itemVariants}>
+                <h2 className={`text-lg font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                    {t.emergencyContacts}
+                </h2>
+                <p className={`text-xs mb-4 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {t.tapToCall}
+                </p>
+
+                <div className="grid grid-cols-1 gap-3">
+                    {emergencyContacts.map((contact, index) => {
+                        const Icon = getContactIcon(contact.icon)
+                        return (
+                            <motion.a
+                                key={index}
+                                href={`tel:${contact.phone}`}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={`p-4 rounded-xl flex items-center gap-3 transition-all ${darkMode
+                                    ? 'bg-slate-800 hover:bg-slate-700 active:bg-slate-700'
+                                    : 'bg-white shadow-sm hover:shadow-md active:shadow-sm'
+                                    }`}
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center">
+                                    <Icon className="w-6 h-6 text-primary-500" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                                        {language === 'as' ? contact.nameAssamese : contact.name}
+                                    </h3>
+                                    <p className="text-primary-500 text-lg font-bold">
+                                        {contact.phone}
+                                    </p>
+                                </div>
+                                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                                    <PhoneCall className="w-5 h-5 text-white" />
+                                </div>
+                            </motion.a>
+                        )
+                    })}
+                </div>
+            </motion.div>
+
+            {/* Additional Tips - In Middle */}
+            <motion.div
+                variants={itemVariants}
+                className={`p-4 rounded-xl ${darkMode ? 'bg-slate-800' : 'bg-blue-50'}`}
+            >
+                <div className="flex items-start gap-3">
+                    <Shield className={`w-5 h-5 flex-shrink-0 ${darkMode ? 'text-primary-400' : 'text-primary-600'}`} />
+                    <div>
+                        <h3 className={`font-semibold text-sm mb-1 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            {language === 'as' ? 'মনত ৰাখক' : 'Remember'}
+                        </h3>
+                        <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {language === 'as'
+                                ? 'জৰুৰীকালীন পৰিস্থিতিত শান্ত থাকক আৰু নিৰ্দেশনা পালন কৰক। সুৰক্ষিত থাকক!'
+                                : 'Stay calm during emergencies and follow official instructions. Stay safe!'
+                            }
+                        </p>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* Safety Guidelines - MOVED TO BOTTOM */}
             <motion.div variants={itemVariants}>
                 <h2 className={`text-lg font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                     {t.safetyGuidelines}
@@ -186,72 +252,6 @@ function SafetyPage({ basins, darkMode, language, t }) {
                             </p>
                         </motion.div>
                     ))}
-                </div>
-            </motion.div>
-
-            {/* Emergency Contacts */}
-            <motion.div variants={itemVariants}>
-                <h2 className={`text-lg font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                    {t.emergencyContacts}
-                </h2>
-                <p className={`text-xs mb-4 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                    {t.tapToCall}
-                </p>
-
-                <div className="grid grid-cols-1 gap-3">
-                    {emergencyContacts.map((contact, index) => {
-                        const Icon = getContactIcon(contact.icon)
-                        return (
-                            <motion.a
-                                key={index}
-                                href={`tel:${contact.phone}`}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                whileTap={{ scale: 0.98 }}
-                                className={`p-4 rounded-xl flex items-center gap-3 transition-all ${darkMode
-                                        ? 'bg-slate-800 hover:bg-slate-700 active:bg-slate-700'
-                                        : 'bg-white shadow-sm hover:shadow-md active:shadow-sm'
-                                    }`}
-                            >
-                                <div className="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center">
-                                    <Icon className="w-6 h-6 text-primary-500" />
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                                        {language === 'as' ? contact.nameAssamese : contact.name}
-                                    </h3>
-                                    <p className="text-primary-500 text-lg font-bold">
-                                        {contact.phone}
-                                    </p>
-                                </div>
-                                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                                    <PhoneCall className="w-5 h-5 text-white" />
-                                </div>
-                            </motion.a>
-                        )
-                    })}
-                </div>
-            </motion.div>
-
-            {/* Additional Tips */}
-            <motion.div
-                variants={itemVariants}
-                className={`p-4 rounded-xl ${darkMode ? 'bg-slate-800' : 'bg-blue-50'}`}
-            >
-                <div className="flex items-start gap-3">
-                    <Shield className={`w-5 h-5 flex-shrink-0 ${darkMode ? 'text-primary-400' : 'text-primary-600'}`} />
-                    <div>
-                        <h3 className={`font-semibold text-sm mb-1 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                            {language === 'as' ? 'মনত ৰাখক' : 'Remember'}
-                        </h3>
-                        <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-600'}`}>
-                            {language === 'as'
-                                ? 'জৰুৰীকালীন পৰিস্থিতিত শান্ত থাকক আৰু নিৰ্দেশনা পালন কৰক। সুৰক্ষিত থাকক!'
-                                : 'Stay calm during emergencies and follow official instructions. Stay safe!'
-                            }
-                        </p>
-                    </div>
                 </div>
             </motion.div>
 
@@ -282,7 +282,7 @@ function SafetyPage({ basins, darkMode, language, t }) {
                                         {t.electricityEmergency}
                                     </h3>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => setShowElectricityModal(false)}
                                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
                                 >
@@ -313,8 +313,8 @@ function SafetyPage({ basins, darkMode, language, t }) {
                                             transition={{ delay: index * 0.1 }}
                                             whileTap={{ scale: 0.98 }}
                                             className={`p-4 rounded-xl flex items-center gap-3 transition-all border-2 border-red-200 dark:border-red-800 ${darkMode
-                                                    ? 'bg-slate-700 hover:bg-slate-600'
-                                                    : 'bg-red-50 hover:bg-red-100'
+                                                ? 'bg-slate-700 hover:bg-slate-600'
+                                                : 'bg-red-50 hover:bg-red-100'
                                                 }`}
                                         >
                                             <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
